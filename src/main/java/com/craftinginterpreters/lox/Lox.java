@@ -20,9 +20,9 @@ public class Lox {
       // https://www.freebsd.org/cgi/man.cgi?query=sysexits&apropos=0&sektion=0&manpath=FreeBSD+4.3-RELEASE&format=html
       System.exit(64);
     } else if (args.length == 1) {
-      // runFile(args[0]);
+      runFile(args[0]);
     } else {
-      // runPrompt();
+      runPrompt();
     }
   }
 

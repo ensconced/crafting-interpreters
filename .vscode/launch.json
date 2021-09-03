@@ -2,10 +2,10 @@
   "configurations": [
     {
       "type": "java",
-      "name": "Launch App",
+      "name": "repl",
       "request": "launch",
       "cwd": "${workspaceFolder}",
-      "console": "internalConsole",
+      "console": "integratedTerminal",
       "stopOnEntry": false,
       "mainClass": "com.craftinginterpreters.lox.Lox",
       "args": "",
