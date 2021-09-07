@@ -9,9 +9,11 @@ import java.nio.file.Paths;
 import java.util.List;
 
 public class Lox {
+  private static final Interpreter interpreter = new Interpreter();
   // we'll use this to ensure we don't try to execute code that has a known
   // error
   static boolean hadError = false;
+  static boolean hadRuntimeError = false;
 
   public static void main(String[] args) throws IOException {
     if (args.length > 1) {
@@ -43,6 +45,12 @@ public class Lox {
     report(line, "", message);
   }
 
+  static void runtimeError(RuntimeError error) {
+    // Tell the user what line of code was executing when the error occurred.
+    System.err.println(error.getMessage() + "\n[line " + error.token.line + "]");
+    hadRuntimeError = true;
+  }
+
   private static void run(String source) {
     Scanner scanner = new Scanner(source);
     List<Token> tokens = scanner.scanTokens();
@@ -50,6 +58,8 @@ public class Lox {
     Expr expression = parser.parse();
 
     if (hadError) return;
+
+    interpreter.interpret(expression);
 
     System.out.println(new AstPrinter().print(expression));
   }
@@ -59,8 +69,8 @@ public class Lox {
     byte[] bytes = Files.readAllBytes(Paths.get(path));
     run(new String(bytes, Charset.defaultCharset()));
 
-    if (hadError)
-      System.exit(65);
+    if (hadError) System.exit(65);
+    if (hadRuntimeError) System.exit(70);
   }
 
   private static void runPrompt() throws IOException {
