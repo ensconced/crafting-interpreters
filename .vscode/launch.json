@@ -2,13 +2,6 @@
   "configurations": [
     {
       "type": "java",
-      "name": "Launch AstPrinter",
-      "request": "launch",
-      "mainClass": "com.craftinginterpreters.lox.AstPrinter",
-      "projectName": "my-app"
-    },
-    {
-      "type": "java",
       "name": "repl",
       "request": "launch",
       "cwd": "${workspaceFolder}",
