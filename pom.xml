@@ -19,16 +19,28 @@
         <version>3.0.0</version>
         <executions>
           <!-- see some discussion here around the "Plugin execution not covered
-          by lifecycle configuration" for the line below
-          https://stackoverflow.com/questions/6352208/how-to-solve-plugin-execution-not-covered-by-lifecycle-configuration-for-sprin
-          but note the top answer is no good! (see comments)
+            by lifecycle configuration" for the line below
+            https://stackoverflow.com/questions/6352208/how-to-solve-plugin-execution-not-covered-by-lifecycle-configuration-for-sprin
+            but note the top answer is no good! (see comments)
           -->
           <execution>
+            <id>generate ast</id>
             <configuration>
               <mainClass>com.craftinginterpreters.tool.GenerateAst</mainClass>
               <commandlineArgs>src/main/java/com/craftinginterpreters/lox</commandlineArgs>
             </configuration>
             <phase>generate-sources</phase>
+            <goals>
+              <goal>java</goal>
+            </goals>
+          </execution>
+          <execution>
+            <id>run lox script</id>
+            <configuration>
+              <mainClass>com.craftinginterpreters.lox.Lox</mainClass>
+              <commandlineArgs>test.lox</commandlineArgs>
+            </configuration>
+            <phase>test</phase>
             <goals>
               <goal>java</goal>
             </goals>
