@@ -262,7 +262,7 @@ class Parser {
       Expr right = unary();
       return new Expr.Unary(operator, right);
     }
-    return primary();
+    return call();
   }
 
   private Expr call() {
