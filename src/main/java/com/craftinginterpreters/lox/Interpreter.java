@@ -124,6 +124,15 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
   }
 
   @Override
+  public Void visitReturnStmt(Stmt.Return stmt) {
+    Object value = null;
+    if (stmt.value != null) value = evaluate(stmt.value);
+    // use an exception to unwind the interpreter stack back to where we began
+    // executing the body
+    throw new Return(value);
+  }
+
+  @Override
   public Void visitVarStmt(Stmt.Var stmt) {
     Object value = null;
     if (stmt.initializer != null) {
