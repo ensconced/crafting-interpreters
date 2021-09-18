@@ -5,6 +5,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Stack;
 
+import jdk.javadoc.internal.tool.resources.javadoc;
+
 class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
   private final Interpreter interpreter;
   private final Stack<Map<String, Boolean>> scopes = new Stack<>();
@@ -18,6 +20,19 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
     beginScope();
     resolve(stmt.statements);
     endScope();
+    return null;
+  }
+
+  @Override
+  public Void visitFunctionStmt(Stmt.Function stmt) {
+    // Similar to visitVariableStmt, we declare and define the name of the function
+    // in the current scope. Unlike variables, though, we define the name eagerly,
+    // before resolving the function's body. This lets a function recursively refer
+    // to itself inside its own body/
+    declare(stmt.name);
+    define(stmt.name);
+    // Then resolve the function's body.
+    resolveFunction(stmt);
     return null;
   }
 
@@ -62,6 +77,21 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
     for (Stmt statement : statements) {
       resolve(statement);
     }
+  }
+
+  private void resolveFunction(Stmt.Function function) {
+    beginScope();
+    for (Token param : function.params) {
+      declare(param);
+      define(param);
+    }
+    // N.B. this is different from how the interpreter handles function
+    // declarations. At runtime, declaring a function doesn't do anything with the
+    // function's body. The body doesn't get touched until later when the function
+    // is called. But in this static anlysis, we immediately traverse into the body
+    // right here.
+    resolve(function.body);
+    endScope();
   }
 
   private void resolve(Stmt stmt) {
