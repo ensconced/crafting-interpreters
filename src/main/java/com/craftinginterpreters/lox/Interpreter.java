@@ -101,6 +101,18 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
   }
 
   @Override
+  public Void visitClassStmt(Stmt.Class stmt) {
+    // NB we use a two-stage variable binding process to allow references to the
+    // class inside its own methods.
+    environment.define(stmt.name.lexeme, null);
+    // turn the class syntax node into a LoxClass - the runtime representation of a
+    // class.
+    LoxClass klass = new LoxClass(stmt.name.lexeme);
+    environment.assign(stmt.name, klass);
+    return null;
+  }
+
+  @Override
   public Void visitExpressionStmt(Stmt.Expression stmt) {
     evaluate(stmt.expression);
     return null;

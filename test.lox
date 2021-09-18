@@ -1,15 +1,7 @@
-fun makeCounter() {
-  var i = 0;
-  fun count() {
-    i = i + 1;
-    print i;
+class DevonshireCream {
+  serveOn() {
+    return "Scones";
   }
-  return count;
 }
 
-var counter = makeCounter();
-var counter2 = makeCounter();
-counter();
-counter();
-counter2();
-counter2();
+print DevonshireCream;
