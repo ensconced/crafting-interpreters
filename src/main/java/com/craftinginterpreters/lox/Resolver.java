@@ -5,8 +5,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Stack;
 
-import jdk.javadoc.internal.tool.resources.javadoc;
-
 class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
   private final Interpreter interpreter;
   private final Stack<Map<String, Boolean>> scopes = new Stack<>();
@@ -24,6 +22,13 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
   }
 
   @Override
+  public Void visitExpressionStmt(Stmt.Expression stmt) {
+    // An expression statement contains a single expression to traverse.
+    resolve(stmt.expression);
+    return null;
+  }
+
+  @Override
   public Void visitFunctionStmt(Stmt.Function stmt) {
     // Similar to visitVariableStmt, we declare and define the name of the function
     // in the current scope. Unlike variables, though, we define the name eagerly,
@@ -33,6 +38,43 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
     define(stmt.name);
     // Then resolve the function's body.
     resolveFunction(stmt);
+    return null;
+  }
+
+  @Override
+  public Void visitIfStmt(Stmt.If stmt) {
+    resolve(stmt.condition);
+    // Here we see how resolution is different from interpretation. When we resolve
+    // an if statement, there is no control flow. We resolve the condition and
+    // *both* branches. Where a dynamic execution steps only into the branch that is
+    // run, a static analysis is conservative - it analyses any branch that *could*
+    // run. Since either one could be reached at runtime, we resolve both.
+    resolve(stmt.thenBranch);
+    if (stmt.elseBranch != null) resolve(stmt.elseBranch);
+    return null;
+  }
+
+  @Override
+  public Void visitPrintStmt(Stmt.Print stmt) {
+    // Like expression statements, a print statement contains a single
+    // subexpression.
+    resolve(stmt.expression);
+    return null;
+  }
+
+  @Override
+  public Void visitReturnStmt(Stmt.Return stmt) {
+    if (stmt.value != null) {
+      resolve(stmt.value);
+    }
+    return null;
+  }
+
+  @Override
+  public Void visitWhileStmt(Stmt.While stmt) {
+    resolve(stmt.condition);
+    // We only need to resolve the body once.
+    resolve(stmt.body);
     return null;
   }
 
@@ -58,6 +100,52 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
     resolve(expr.value);
     // Then resolve the variable that's being assigned to.
     resolveLocal(expr, expr.name);
+    return null;
+  }
+
+  @Override
+  public Void visitBinaryExpr(Expr.Binary expr) {
+    // Traverse into and resolve both operands.
+    resolve(expr.left);
+    resolve(expr.right);
+    return null;
+  }
+
+  @Override
+  public Void visitCallExpr(Expr.Call expr) {
+    resolve(expr.callee);
+
+    for (Expr argument : expr.arguments) {
+      resolve(argument);
+    }
+    return null;
+  }
+
+  @Override
+  public Void visitGroupingExpr(Expr.Grouping expr) {
+    resolve(expr.expression);
+    return null;
+  }
+
+  @Override
+  public Void visitLiteralExpr(Expr.Literal expr) {
+    // A literal expression doesn't mention any variables and doesn't contain any
+    // subexpressions so there is no work to do.
+    return null;
+  }
+
+  @Override
+  public Void visitLogicalExpr(Expr.Logical expr) {
+    // Since a static analysis does no control flow or short-circuiting, logcal
+    // expressions are exactly the same as other binary operators.
+    resolve(expr.left);
+    resolve(expr.right);
+    return null;
+  }
+
+  @Override
+  public Void visitUnaryExpr(Expr.Unary expr) {
+    resolve(expr.right);
     return null;
   }
 
