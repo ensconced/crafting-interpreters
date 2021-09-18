@@ -207,6 +207,9 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
     // associated with a key in the scope map represents whether or not we have
     // finished resolving that variable's initializer.
     Map<String, Boolean> scope = scopes.peek();
+    if (scope.containsKey(name.lexeme)) {
+      Lox.error(name, "Already a variable with this name in this scope.");
+    }
     scope.put(name.lexeme, false);
   }
 
