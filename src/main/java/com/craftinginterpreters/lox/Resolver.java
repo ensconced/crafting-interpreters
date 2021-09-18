@@ -27,12 +27,24 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
     declare(stmt.name);
     if (stmt.initializer != null) {
       // Resolve the initializer expression in the same scope where the new variable
-      // now exists but is unavilable.
+      // now exists but is unavailable.
       resolve(stmt.initializer);
     }
-    // Once the initializer expression is done, the variable is ready fro prime
+    // Once the initializer expression is done, the variable is ready for prime
     // time.
     define(stmt.name);
+    return null;
+  }
+
+  @Override
+  public Void visitVariableExpr(Expr.Variable expr) {
+    // If the variable exists in the current scope but with value of false, then we
+    // have declared it but not yet defined it.
+    if (!scopes.isEmpty() && scopes.peek().get(expr.name.lexeme) == Boolean.FALSE) {
+      Lox.error(expr.name, "Can't read local variable in its own initializer.");
+    }
+
+    resolveLocal(expr, expr.name);
     return null;
   }
 
@@ -75,5 +87,17 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
     // Set the variable's value in the scope map to `true` to mark it as fully
     // initialized and available for use.
     scopes.peek().put(name.lexeme, true);
+  }
+
+  private void resolveLocal(Expr expr, Token name) {
+    // Start at the innermost scope and work outwards, looking in each map for a
+    // matching name. If we walk through all of the block scopes and never find the
+    // variable, we leave it unresolved and assume it's global.
+    for (int i = scopes.size() - 1; i >= 0; i--) {
+      if (scopes.get(i).containsKey(name.lexeme)) {
+        interpreter.resolve(expr, scopes.size() - 1 - i);
+        return;
+      }
+    }
   }
 }
