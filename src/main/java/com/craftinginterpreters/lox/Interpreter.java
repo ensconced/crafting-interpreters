@@ -257,6 +257,17 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
   }
 
   @Override
+  public Object visitGetExpr(Expr.Get expr) {
+    Object object = evaluate(expr.object);
+    if (object instanceof LoxInstance) {
+      return ((LoxInstance) object).get(expr.name);
+    }
+    // If the object is some other type e.g. a number, invoking a getter on it is a
+    // runtime error.
+    throw new RuntimeError(expr.name, "Only instances have properties.");
+  }
+
+  @Override
   public Object visitUnaryExpr(Expr.Unary expr) {
     // Like grouping, unary expressions have a single subexpression that we must
     // evaluate first. The difference is that the unary expression itself does a
