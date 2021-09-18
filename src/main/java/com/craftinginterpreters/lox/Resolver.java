@@ -37,6 +37,16 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
   }
 
   @Override
+  public Void visitAssignExpr(Expr.Assign expr) {
+    // First, resolve the expression for the assigned value in case it also contains
+    // references to other variables.
+    resolve(expr.value);
+    // Then resolve the variable that's being assigned to.
+    resolveLocal(expr, expr.name);
+    return null;
+  }
+
+  @Override
   public Void visitVariableExpr(Expr.Variable expr) {
     // If the variable exists in the current scope but with value of false, then we
     // have declared it but not yet defined it.
