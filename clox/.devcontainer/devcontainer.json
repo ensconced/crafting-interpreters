@@ -1,0 +1,7 @@
+{
+  "name": "clang",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "extensions": ["ms-vscode.cpptools", "jbenden.c-cpp-flylint"]
+}

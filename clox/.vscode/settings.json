@@ -1,0 +1,14 @@
+{
+  "c-cpp-flylint.clang.pedantic": true,
+  "c-cpp-flylint.clang.pedanticErrors": true,
+  "c-cpp-flylint.clang.standard": [
+    "c17"
+  ],
+  "c-cpp-flylint.language": "c",
+  "c-cpp-flylint.flawfinder.enable": false,
+  "c-cpp-flylint.flexelint.enable": false,
+  "c-cpp-flylint.lizard.enable": false,
+  "editor.formatOnSave": true,
+  "editor.formatOnType": true,
+  "c-cpp-flylint.clang.extraArgs": ["-Wall", "-Wextra"],
+}
