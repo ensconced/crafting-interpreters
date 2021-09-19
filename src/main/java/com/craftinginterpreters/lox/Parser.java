@@ -299,7 +299,7 @@ class Parser {
       if (match(LEFT_PAREN)) {
         expr = finishCall(expr);
       } else if (match(DOT)) {
-        Token name = consume(IDENTIFIER, "Expect property name after '.".);
+        Token name = consume(IDENTIFIER, "Expect property name after '.'.");
         expr = new Expr.Get(expr, name);
       } else {
         break;
@@ -396,15 +396,15 @@ class Parser {
       if (previous().type == SEMICOLON) return;
 
       switch (peek().type) {
-      case CLASS:
-      case FUN:
-      case VAR:
-      case FOR:
-      case IF:
-      case WHILE:
-      case PRINT:
-      case RETURN:
-        return;
+        case CLASS:
+        case FUN:
+        case VAR:
+        case FOR:
+        case IF:
+        case WHILE:
+        case PRINT:
+        case RETURN:
+          return;
       }
       advance();
     }
