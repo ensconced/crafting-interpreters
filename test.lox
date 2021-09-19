@@ -1,7 +1,9 @@
-class Bacon {
-  eat() {
-    print "Crunch crunch crunch";
+class Person {
+  say() {
+    print "Hello, my name is " + this.name;
   }
 }
 
-Bacon().eat();
+var joe = Person();
+joe.name = "Joe";
+joe.say();

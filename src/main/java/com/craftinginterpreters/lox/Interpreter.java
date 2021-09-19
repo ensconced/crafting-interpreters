@@ -75,6 +75,11 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
   }
 
   @Override
+  public Object visitThisExpr(Expr.This expr) {
+    return lookUpVariable(expr.keyword, expr);
+  }
+
+  @Override
   public Object visitGroupingExpr(Expr.Grouping expr) {
     // A grouping node has a reference to an inner node for the expression
     // contained inside the parens. To evaluate the grouping expression itself,
