@@ -1,9 +1,1 @@
-class Person {
-  say() {
-    print "Hello, my name is " + this.name;
-  }
-}
-
-var joe = Person();
-joe.name = "Joe";
-joe.say();
+print this;
