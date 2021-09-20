@@ -53,9 +53,11 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
 
     // short-circuiting
     if (expr.operator.type == TokenType.OR) {
-      if (isTruthy(left)) return left;
+      if (isTruthy(left))
+        return left;
     } else {
-      if (!isTruthy(left)) return left;
+      if (!isTruthy(left))
+        return left;
     }
 
     return evaluate(expr.right);
@@ -120,6 +122,14 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
 
   @Override
   public Void visitClassStmt(Stmt.Class stmt) {
+    Object superclass = null;
+    if (stmt.superclass != null) {
+      superclass = evaluate(stmt.superclass);
+      if (!(superclass instanceof LoxClass)) {
+        throw new RuntimeError(stmt.superclass.name, "Superclass must be a class.");
+      }
+    }
+
     // When we interpret a class declaration statement, we turn the syntactic
     // representation of the class - its AST node - into its runtime representation.
     // And each of the class's method declarations blossoms into a LoxFunction
@@ -137,7 +147,7 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
 
     // turn the class syntax node into a LoxClass - the runtime representation of a
     // class.
-    LoxClass klass = new LoxClass(stmt.name.lexeme, methods);
+    LoxClass klass = new LoxClass(stmt.name.lexeme, (LoxClass) superclass, methods);
     environment.assign(stmt.name, klass);
     return null;
   }
@@ -175,7 +185,8 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
   @Override
   public Void visitReturnStmt(Stmt.Return stmt) {
     Object value = null;
-    if (stmt.value != null) value = evaluate(stmt.value);
+    if (stmt.value != null)
+      value = evaluate(stmt.value);
     // use an exception to unwind the interpreter stack back to where we began
     // executing the body
     throw new Return(value);
@@ -222,39 +233,39 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
     Object right = evaluate(expr.right);
 
     switch (expr.operator.type) {
-      case GREATER:
-        checkNumberOperands(expr.operator, left, right);
-        return (double) left > (double) right;
-      case GREATER_EQUAL:
-        checkNumberOperands(expr.operator, left, right);
-        return (double) left >= (double) right;
-      case LESS:
-        checkNumberOperands(expr.operator, left, right);
-        return (double) left < (double) right;
-      case LESS_EQUAL:
-        checkNumberOperands(expr.operator, left, right);
-        return (double) left <= (double) right;
-      case BANG_EQUAL:
-        return !isEqual(left, right);
-      case EQUAL_EQUAL:
-        return isEqual(left, right);
-      case MINUS:
-        checkNumberOperands(expr.operator, left, right);
-        return (double) left - (double) right;
-      case PLUS:
-        if (left instanceof Double && right instanceof Double) {
-          return (double) left + (double) right;
-        }
-        if (left instanceof String && right instanceof String) {
-          return (String) left + (String) right;
-        }
-        throw new RuntimeError(expr.operator, "Operands must be two numbers or two strings");
-      case SLASH:
-        checkNumberOperands(expr.operator, left, right);
-        return (double) left / (double) right;
-      case STAR:
-        checkNumberOperands(expr.operator, left, right);
-        return (double) left * (double) right;
+    case GREATER:
+      checkNumberOperands(expr.operator, left, right);
+      return (double) left > (double) right;
+    case GREATER_EQUAL:
+      checkNumberOperands(expr.operator, left, right);
+      return (double) left >= (double) right;
+    case LESS:
+      checkNumberOperands(expr.operator, left, right);
+      return (double) left < (double) right;
+    case LESS_EQUAL:
+      checkNumberOperands(expr.operator, left, right);
+      return (double) left <= (double) right;
+    case BANG_EQUAL:
+      return !isEqual(left, right);
+    case EQUAL_EQUAL:
+      return isEqual(left, right);
+    case MINUS:
+      checkNumberOperands(expr.operator, left, right);
+      return (double) left - (double) right;
+    case PLUS:
+      if (left instanceof Double && right instanceof Double) {
+        return (double) left + (double) right;
+      }
+      if (left instanceof String && right instanceof String) {
+        return (String) left + (String) right;
+      }
+      throw new RuntimeError(expr.operator, "Operands must be two numbers or two strings");
+    case SLASH:
+      checkNumberOperands(expr.operator, left, right);
+      return (double) left / (double) right;
+    case STAR:
+      checkNumberOperands(expr.operator, left, right);
+      return (double) left * (double) right;
     }
 
     // Unreachable
@@ -279,7 +290,8 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
     // functions in lox have strict arity
     if (arguments.size() != function.arity()) {
       throw new RuntimeError(
-          expr.paren, "Expected " + function.arity() + " arguments but got " + arguments.size() + "."
+          expr.paren,
+          "Expected " + function.arity() + " arguments but got " + arguments.size() + "."
       );
     }
 
@@ -305,14 +317,14 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
     Object right = evaluate(expr.right);
 
     switch (expr.operator.type) {
-      case BANG:
-        return !isTruthy(right);
-      case MINUS:
-        // The subexpression must be a number. We don't statically know that in
-        // java, so we need a type cast. This cast happens at runtime - this is the core
-        // of what makes Lox a dynamically typed language.
-        checkNumberOperand(expr.operator, right);
-        return -(double) right;
+    case BANG:
+      return !isTruthy(right);
+    case MINUS:
+      // The subexpression must be a number. We don't statically know that in
+      // java, so we need a type cast. This cast happens at runtime - this is the core
+      // of what makes Lox a dynamically typed language.
+      checkNumberOperand(expr.operator, right);
+      return -(double) right;
     }
 
     // Unreachable
@@ -334,29 +346,36 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
   }
 
   private void checkNumberOperand(Token operator, Object operand) {
-    if (operand instanceof Double) return;
+    if (operand instanceof Double)
+      return;
     throw new RuntimeError(operator, "Operand must be a number.");
   }
 
   private void checkNumberOperands(Token operator, Object left, Object right) {
-    if (left instanceof Double && right instanceof Double) return;
+    if (left instanceof Double && right instanceof Double)
+      return;
     throw new RuntimeError(operator, "Operands must be numbers");
   }
 
   private boolean isTruthy(Object object) {
-    if (object == null) return false;
-    if (object instanceof Boolean) return (boolean) object;
+    if (object == null)
+      return false;
+    if (object instanceof Boolean)
+      return (boolean) object;
     return true;
   }
 
   private boolean isEqual(Object a, Object b) {
-    if (a == null && b == null) return true;
-    if (a == null) return false;
+    if (a == null && b == null)
+      return true;
+    if (a == null)
+      return false;
     return a.equals(b);
   }
 
   private String stringify(Object object) {
-    if (object == null) return "nil";
+    if (object == null)
+      return "nil";
     if (object instanceof Double) {
       String text = object.toString();
       if (text.endsWith(".0")) {
