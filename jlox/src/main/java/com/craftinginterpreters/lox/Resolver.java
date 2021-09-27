@@ -25,6 +25,7 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
   private enum ClassType {
     NONE,
     CLASS,
+    SUBCLASS,
   }
 
   @Override
@@ -48,6 +49,7 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
     }
 
     if (stmt.superclass != null) {
+      currentClass = ClassType.SUBCLASS;
       // Since classes are usually declared at the top level, the superclass name
       // will most likely be a global variable, so this doesn't usually do anything
       // useful. However, Lox allows class declarations even inside blocks, so it's
@@ -233,9 +235,14 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
     return null;
   }
 
-  // We resolve `super` exactly as if it were a variable.
   @Override
   public Void visitSuperExpr(Expr.Super expr) {
+    if (currentClass == ClassType.NONE) {
+      Lox.error(expr.keyword, "Can't use 'super' outside of a class.");
+    } else if (currentClass != ClassType.SUBCLASS) {
+      Lox.error(expr.keyword, "Can't use 'super' in a class with no superclass.");
+    }
+    // We resolve `super` exactly as if it were a variable.
     resolveLocal(expr, expr.keyword);
     return null;
   }
