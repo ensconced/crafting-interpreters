@@ -382,6 +382,6 @@
         <setting id="org.eclipse.jdt.core.formatter.join_wrapped_lines" value="false" />
         <setting id="org.eclipse.jdt.core.formatter.parentheses_positions_in_method_invocation" value="separate_lines_if_wrapped" />
         <setting id="org.eclipse.jdt.core.formatter.keep_then_statement_on_same_line" value="true" />
-        <setting id="org.eclipse.jdt.core.formatter.align_with_spaces" value="true" />
+        <!-- <setting id="org.eclipse.jdt.core.formatter.align_with_spaces" value="true" /> -->
     </profile>
 </profiles>

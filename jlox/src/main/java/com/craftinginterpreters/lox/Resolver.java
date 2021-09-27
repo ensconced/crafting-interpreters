@@ -48,12 +48,20 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
     }
 
     if (stmt.superclass != null) {
-      // Since classes aqre usually declared at the top level, the superclass name
+      // Since classes are usually declared at the top level, the superclass name
       // will most likely be a global variable, so this doesn't usually do anything
       // useful. However, Lox allows class declarations even inside blocks, so it's
       // possible the superclass name refers to a local variable. In that case, we
       // need to make sure it's resolved.
       resolve(stmt.superclass);
+    }
+
+    // If the class declaration has a superclass, then we create a new scope
+    // surrounding all of its methods. In that scope, in that scope, we define the
+    // name "super".
+    if (stmt.superclass != null) {
+      beginScope();
+      scopes.peek().put("super", true);
     }
 
     // add new scope for "this"
@@ -71,6 +79,9 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
 
     // end "this" scope
     endScope();
+
+    // We're done resolving the class's methods, so discard this scope.
+    if (stmt.superclass != null) endScope();
 
     // restore the old value
     currentClass = enclosingClass;
@@ -219,6 +230,13 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
   public Void visitSetExpr(Expr.Set expr) {
     resolve(expr.value);
     resolve(expr.object);
+    return null;
+  }
+
+  // We resolve `super` exactly as if it were a variable.
+  @Override
+  public Void visitSuperExpr(Expr.Super expr) {
+    resolveLocal(expr, expr.keyword);
     return null;
   }
 
