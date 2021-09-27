@@ -11,4 +11,6 @@
   "editor.formatOnSave": true,
   "editor.formatOnType": true,
   "c-cpp-flylint.clang.extraArgs": ["-Wall", "-Wextra"],
+  "files.insertFinalNewline": true,
+  "files.trimFinalNewlines": true
 }
