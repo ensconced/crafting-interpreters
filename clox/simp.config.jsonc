@@ -1,0 +1,11 @@
+{
+  "scripts": {
+    // omg you can put comments in here...
+    "db": "simp --mode debug"
+  },
+  "modes": {
+    "debug": {
+      "flags": "-g"
+    }
+  }
+}
