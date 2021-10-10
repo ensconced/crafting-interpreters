@@ -1,7 +1,8 @@
 {
   "scripts": {
     // omg you can put comments in here...
-    "db": "simp --mode debug"
+    "db": "simp --mode debug",
+    "run": "simp build main.c && ./main"
   },
   "modes": {
     "debug": {
