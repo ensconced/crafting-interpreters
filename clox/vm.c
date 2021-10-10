@@ -7,9 +7,30 @@
 
 VM vm;
 
-void initVM() {}
+static void resetStack() {
+  // stackTop points to where the next value to be pushed will go.
+  // Since the stack array is declared directly inline in the VM struct, we
+  // don't need to allocate it. We don't even need to clear the unused cells in
+  // the array - we simply won't access them until after values have been stored
+  // in them. The only initialization we need is to set stackTop to point to the
+  // beginning of the array to indicate that the stack is empty.
+  vm.stackTop = vm.stack;
+}
+
+void initVM() { resetStack(); }
 
 void freeVM() {}
+
+void push(Value value) {
+  // store value in the array element at the top of the stack
+  *vm.stackTop = value;
+  vm.stackTop++;
+}
+
+Value pop() {
+  vm.stackTop--;
+  return *vm.stackTop;
+}
 
 static InterpretResult run() {
 #define READ_BYTE() (*vm.ip++)
