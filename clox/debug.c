@@ -30,6 +30,15 @@ void disassembleChunk(Chunk* chunk, const char* name) {
 int disassembleInstruction(Chunk* chunk, int offset) {
   printf("%04d ", offset);
 
+  // show the source line
+  if (offset > 0 && chunk->lines[offset] == chunk->lines[offset - 1]) {
+    // the instruction comes from the same source line as the previous one so
+    // just show a |
+    printf("   | ");
+  } else {
+    printf("%4d ", chunk->lines[offset]);
+  }
+
   uint8_t instruction = chunk->code[offset];
   switch (instruction) {
     case OP_CONSTANT:
