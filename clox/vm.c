@@ -3,6 +3,7 @@
 #include <stdio.h>
 
 #include "common.h"
+#include "compiler.h"
 #include "debug.h"
 
 VM vm;
@@ -97,8 +98,7 @@ static InterpretResult run() {
 #undef BINARY_OP
 }
 
-InterpretResult interpret(Chunk* chunk) {
-  vm.chunk = chunk;
+InterpretResult interpret(const char* source) {
   // The instruction pointer is an actual pointer into the middle of the
   // bytecode array. This is better than using an integer index because it's
   // faster to dereference a pointer than to look up an element in an array by
@@ -108,6 +108,6 @@ InterpretResult interpret(Chunk* chunk) {
   // *about to be executed*. This will be true during the entire time the VM is
   // running; the IP always points to the next instruction, not the one
   // currently being handled.
-  vm.ip = vm.chunk->code;
-  return run();
+  compile(source);
+  return INTERPRET_OK;
 }
