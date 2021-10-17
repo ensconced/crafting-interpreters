@@ -99,6 +99,15 @@ static InterpretResult run() {
 }
 
 InterpretResult interpret(const char* source) {
+  Chunk chunk;
+  initChunk(&chunk);
+
+  if (!compile(source, &chunk)) {
+    freeChunk(&chunk);
+    return INTERPRET_COMPILE_ERROR;
+  }
+
+  vm.chunk = &chunk;
   // The instruction pointer is an actual pointer into the middle of the
   // bytecode array. This is better than using an integer index because it's
   // faster to dereference a pointer than to look up an element in an array by
@@ -108,6 +117,9 @@ InterpretResult interpret(const char* source) {
   // *about to be executed*. This will be true during the entire time the VM is
   // running; the IP always points to the next instruction, not the one
   // currently being handled.
-  compile(source);
-  return INTERPRET_OK;
+  vm.ip = vm.chunk->code;
+
+  InterpretResult result = run();
+  freeChunk(&chunk);
+  return result;
 }
