@@ -78,6 +78,11 @@ static uint8_t makeConstant(Value value) {
 
 static void endCompiler() { emitReturn(); }
 
+static void grouping() {
+  expression();
+  consume(TOKEN_RIGHT_PAREN, "Expect ')' after expression.");
+}
+
 static void emitConstant(Value value) {
   emitBytes(OP_CONSTANT, makeConstant(value));
 }
