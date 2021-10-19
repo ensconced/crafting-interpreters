@@ -1,9 +1,7 @@
 {
   "c-cpp-flylint.clang.pedantic": true,
   "c-cpp-flylint.clang.pedanticErrors": true,
-  "c-cpp-flylint.clang.standard": [
-    "c17"
-  ],
+  "c-cpp-flylint.clang.standard": ["c17"],
   "c-cpp-flylint.language": "c",
   "c-cpp-flylint.flawfinder.enable": false,
   "c-cpp-flylint.flexelint.enable": false,
@@ -14,6 +12,10 @@
   "files.insertFinalNewline": true,
   "files.trimFinalNewlines": true,
   "files.associations": {
-    "cstddef": "c"
+    "cstddef": "c",
+    "__bit_reference": "c",
+    "__split_buffer": "c",
+    "string": "c",
+    "vector": "c"
   }
 }
