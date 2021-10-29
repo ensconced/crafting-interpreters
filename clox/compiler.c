@@ -32,7 +32,7 @@ typedef void (*ParseFn)();
 typedef struct {
   ParseFn prefix;
   ParseFn infix;
-  Precendence precendence;
+  Precedence precedence;
 } ParseRule;
 
 Parser parser;
@@ -201,7 +201,19 @@ ParseRule rules[] = {
 };
 
 static void parsePrecedence(Precedence precedence) {
-  // what goes here?
+  advance();
+  ParseFn prefixRule = getRule(parser.previous.type)->prefix;
+  if (prefixRule == NULL) {
+    error("Expect expression");
+    return;
+  }
+  prefixRule();
+
+  while (precedence <= getRule(parser.current.type)->precedence) {
+    advance();
+    ParseFn infixRule = getRule(parser.previous.type)->infix;
+    infixRule();
+  }
 }
 
 static ParseRule* getRule(TokenType type) { return &rules[type]; }
