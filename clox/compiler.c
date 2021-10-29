@@ -6,6 +6,10 @@
 #include "common.h"
 #include "scanner.h"
 
+#ifdef DEBUG_PRINT_CODE
+#include "debug.h"
+#endif
+
 typedef struct {
   Token current;
   Token previous;
@@ -62,6 +66,12 @@ static void errorAtCurrent(const char* message) {
 
 static void advance() {
   parser.previous = parser.current;
+  // Remember, clox's scanner doesn't report lexical errors. Instead, it creates
+  // special error tokens and leaves it up to the parser to report them. We do
+  // that here.
+  // We keep looping, reading tokens and reporting the errors, until we hit a
+  // non-error one or reach the end. That way, the reset of the parser sees only
+  // valid tokens.
   for (;;) {
     parser.current = scanToken();
     if (parser.current.type != TOKEN_ERROR) break;
@@ -98,7 +108,14 @@ static uint8_t makeConstant(Value value) {
   return (uint8_t)constant;
 }
 
-static void endCompiler() { emitReturn(); }
+static void endCompiler() {
+  emitReturn();
+#ifdef DEBUG_PRINT_CODE
+  if (!parser.hadError) {
+    disassembleChunk(currentChunk(), "code");
+  }
+#endif
+}
 
 static void expression();
 static ParseRule* getRule(TokenType type);
@@ -202,6 +219,7 @@ ParseRule rules[] = {
 
 static void parsePrecedence(Precedence precedence) {
   advance();
+  printf("%d", parser.previous.type);
   ParseFn prefixRule = getRule(parser.previous.type)->prefix;
   if (prefixRule == NULL) {
     error("Expect expression");

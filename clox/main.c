@@ -12,8 +12,9 @@ static void repl() {
   for (;;) {
     printf("> ");
 
+    // fgets returns null pointer on failure - in that case
+    // we want to quit...
     if (!fgets(line, sizeof(line), stdin)) {
-      printf("\n");
       break;
     }
 
