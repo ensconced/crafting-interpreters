@@ -192,9 +192,7 @@ Token scanToken() {
 
   char c = advance();
   if (isAlpha(c)) return identifier();
-  if (isDigit(c)) {
-    return number();
-  };
+  if (isDigit(c)) return number();
 
   switch (c) {
     case '(':

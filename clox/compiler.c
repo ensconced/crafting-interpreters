@@ -219,7 +219,6 @@ ParseRule rules[] = {
 
 static void parsePrecedence(Precedence precedence) {
   advance();
-  printf("%d", parser.previous.type);
   ParseFn prefixRule = getRule(parser.previous.type)->prefix;
   if (prefixRule == NULL) {
     error("Expect expression");
