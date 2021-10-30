@@ -40,3 +40,20 @@ void printValue(Value value) {
       break;
   }
 }
+
+bool valuesEqual(Value a, Value b) {
+  if (a.type != b.type) return false;
+  // NB we can't just memcmp the value structs directly
+  // since because of padding and the different-sized union fields,
+  // a Value contains unused bits which will just contain garbage.
+  switch (a.type) {
+    case VAL_BOOL:
+      return AS_BOOL(a) == AS_BOOL(b);
+    case VAL_NIL:
+      return true;
+    case VAL_NUMBER:
+      return AS_NUMBER(a) == AS_NUMBER(b);
+    default:
+      return false;  // unreachable
+  }
+}
