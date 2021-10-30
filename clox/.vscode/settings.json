@@ -17,6 +17,14 @@
     "__split_buffer": "c",
     "string": "c",
     "vector": "c",
-    "ranges": "c"
+    "ranges": "c",
+    "optional": "cpp",
+    "ostream": "cpp",
+    "system_error": "cpp",
+    "array": "cpp",
+    "functional": "cpp",
+    "tuple": "cpp",
+    "type_traits": "cpp",
+    "utility": "cpp"
   }
 }
