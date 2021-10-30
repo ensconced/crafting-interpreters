@@ -24,7 +24,7 @@ typedef struct {
 // designated initializer syntax for unions - see
 // https://en.cppreference.com/w/c/language/struct_initialization
 #define BOOL_VAL(value) ((Value){VAL_BOOL, {.boolean = value}})
-#define NIL_VAL(value) ((Value){VAl_NIL, {.number = 0}})
+#define NIL_VAL ((Value){VAL_NIL, {.number = 0}})
 #define NUMBER_VAL(value) ((Value){VAL_NUMBER, {.number = value}})
 
 // Macros for unpacking a clox value to get the native C value back out.
