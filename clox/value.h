@@ -2,6 +2,8 @@
 #define clox_value_h
 #include "common.h"
 
+typedef struct Obj Obj;
+
 // The cases here cover each kind of value that has built-in support in the VM.
 typedef enum {
   VAL_BOOL,
