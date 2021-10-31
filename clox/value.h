@@ -7,6 +7,8 @@ typedef enum {
   VAL_BOOL,
   VAL_NIL,
   VAL_NUMBER,
+  // when a value's type is VAL_OBJ, the payload is a pointer to heap memory.
+  VAL_OBJ,
 } ValueType;
 
 // tagged union
@@ -17,6 +19,7 @@ typedef struct {
   union {
     bool boolean;
     double number;
+    Obj* obj;
   } as;
 } Value;
 
@@ -26,6 +29,7 @@ typedef struct {
 #define BOOL_VAL(value) ((Value){VAL_BOOL, {.boolean = value}})
 #define NIL_VAL ((Value){VAL_NIL, {.number = 0}})
 #define NUMBER_VAL(value) ((Value){VAL_NUMBER, {.number = value}})
+#define OBJ_VAL(object) ((Value){VAL_OBJ, {.obj = (Obj*)object}})
 
 // Macros for unpacking a clox value to get the native C value back out.
 // Any time we call one of these AS_ macros, we need to guard it behind a call
@@ -34,11 +38,13 @@ typedef struct {
 // doesn't carry any extra data.
 #define AS_BOOL(value) ((value).as.boolean)
 #define AS_NUMBER(value) ((value).as.number)
+#define AS_OBJ(value) ((value).as.obj)
 
 // and we have a few macros for checking a value's type
 #define IS_BOOL(value) ((value).type == VAL_BOOL)
 #define IS_NIL(value) ((value).type == VAL_NIL)
 #define IS_NUMBER(value) ((value).type == VAL_NUMBER)
+#define IS_OBJ(value) ((value).type == VAL_OBJ)
 
 typedef struct {
   int capacity;
