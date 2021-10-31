@@ -24,7 +24,17 @@ struct ObjString {
   char* chars;
 };
 
+// copyString assumes it cannot take ownership of the characters you pass in.
+// Instead, it conservatively creates a copy of the characters on the heap that
+// the ObjString can own. That's the right thing for string literals where the
+// passed-in characters are in the middle of the source string.
+// But for concatenation, we've already dynamically allocated a character array
+// on the heap. Making another copy of that would be redundant (and would mean
+// concatenate has to remember to free its copy). Instead, this takeString
+// claims ownership of the string you give it.
+ObjString* takeString(char* chars, int length);
 ObjString* copyString(const char* chars, int length);
+
 void printObject(Value value);
 
 static inline bool isObjType(Value value, ObjType type) {
