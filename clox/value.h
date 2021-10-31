@@ -3,6 +3,7 @@
 #include "common.h"
 
 typedef struct Obj Obj;
+typedef struct ObjString ObjString;
 
 // The cases here cover each kind of value that has built-in support in the VM.
 typedef enum {
