@@ -35,9 +35,12 @@ static void runtimeError(const char* format, ...) {
   resetStack();
 }
 
-void initVM() { resetStack(); }
+void initVM() {
+  resetStack();
+  vm.objects = NULL;
+}
 
-void freeVM() {}
+void freeVM() { freeObjects(); }
 
 void push(Value value) {
   // store value in the array element at the top of the stack
