@@ -29,6 +29,7 @@ void freeTable(Table* table) {
 */
 static Entry* findEntry(Entry* entries, int capacity, ObjString* key) {
   uint32_t index = key->hash % capacity;
+  Entry* tombstone = NULL;
   for (;;) {
     Entry* entry = &entries[index];
     /*
@@ -45,7 +46,21 @@ static Entry* findEntry(Entry* entries, int capacity, ObjString* key) {
       course doesn't work in C - there could be two copies of the same string
       at different places in memory. We'll solve this later on...
     */
-    if (entry->key == key || entry->key == NULL) {
+    if (entry->key == NULL) {
+      if (IS_NIL(entry->value)) {
+        // Empty entry - the key isn't present. If we have passed a tombstone,
+        // we return its bucket instead of the later empty one. If we're calling
+        // findEntry in order to insert a node, that lets us treate the
+        // tombstone bucket as empty and reuse it for the new entry.
+        // Reusing tombstone slots automatically like this helps reduce the
+        // number of tombstones wasting space in the bucket array.
+        return tombstone != NULL ? tombstone : entry;
+      } else {
+        // We found a tombstone
+        if (tombstone == NULL) tombstone = entry;
+      }
+    } else if (entry->key == key) {
+      // We found the key
       return entry;
     }
     /*
@@ -109,6 +124,19 @@ bool tableSet(Table* table, ObjString* key, Value value) {
   entry->key = key;
   entry->value = value;
   return isNewKey;
+}
+
+bool tableDelete(Table* table, ObjString* key) {
+  if (table->count == 0) return false;
+
+  // Find the entry
+  Entry* entry = findEntry(table->entries, table->capacity, key);
+  if (entry->key == NULL) return false;
+
+  // Place a tombstone in the entry
+  entry->key = NULL;
+  entry->value = BOOL_VAL(true);
+  return true;
 }
 
 void tableAddAll(Table* from, Table* to) {
