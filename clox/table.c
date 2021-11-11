@@ -57,6 +57,34 @@ static Entry* findEntry(Entry* entries, int capacity, ObjString* key) {
   }
 }
 
+static void adjustCapacity(Table* table, int capacity) {
+  Entry* entries = ALLOCATE(Entry, capacity);
+  for (int i = 0; i < capacity; i++) {
+    entries[i].key = NULL;
+    entries[i].value = NIL_VAL;
+  }
+  /*
+    If you're dealing with a simple dynamic array, you can just use realloc and
+    let the C standard library copy everything over. That doesn't work for a
+    hash table though, because to choose the bucket for each entry, we take its
+    hash key *modulo the array size*. So when the array size changes, entries
+    would end up in different buckets.
+    The simplest way to get every entry where it belongs is to rebuild the
+    table from scratch by re-inserting every entry into the new empty array.
+  */
+  for (int i = 0; i < table->capacity; i++) {
+    Entry* entry = &table->entries[i];
+    if (entry->key == NULL) continue;
+
+    Entry* dest = findEntry(entries, capacity, entry->key);
+    dest->key = entry->key;
+    dest->value = entry->value;
+  }
+  FREE_ARRAY(Entry, table->entries, table->capacity);
+  table->entries = entries;
+  table->capacity = capacity;
+}
+
 bool tableSet(Table* table, ObjString* key, Value value) {
   if (table->count + 1 > table->capacity * TABLE_MAX_LOAD) {
     int capacity = GROW_CAPACITY(table->capacity);
@@ -70,4 +98,13 @@ bool tableSet(Table* table, ObjString* key, Value value) {
   entry->key = key;
   entry->value = value;
   return isNewKey;
+}
+
+void tableAddAll(Table* from, Table* to) {
+  for (int i = 0; i < from->capacity; i++) {
+    Entry* entry = &from->entries[i];
+    if (entry->key != NULL) {
+      tableSet(to, entry->key, entry->value);
+    }
+  }
 }
