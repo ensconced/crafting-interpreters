@@ -23,6 +23,13 @@ struct ObjString {
   Obj obj;
   int length;
   char* chars;
+  // Each objString stores the hash code for its string. Since strings are
+  // immutable in Lox, we can calculate the hash code once up front and be
+  // certain that it will never get invalidated. Caching it eagerly makes a kind
+  // of sense: allocating the string and copying its characters over is already
+  // an O(n) operation, so it's a good time to also do the O(n) calculation of
+  // the string's hash.
+  uint32_t hash;
 };
 
 // copyString assumes it cannot take ownership of the characters you pass in.
