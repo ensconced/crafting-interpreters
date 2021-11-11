@@ -98,13 +98,23 @@ static void adjustCapacity(Table* table, int capacity) {
     The simplest way to get every entry where it belongs is to rebuild the
     table from scratch by re-inserting every entry into the new empty array.
   */
+  /*
+    When we resize the array, we allocate a new array and re-insert all of the
+    existing entries into it. During this process, we don't copy the tombstones
+    over. They don't add any value since we're rebuilding the probe sequences
+    anyway, and would just slow down lookups. That means we need to recalculate
+    the cound since it may change during a resize. So we clear it out.
+  */
+  table->count = 0;
   for (int i = 0; i < table->capacity; i++) {
     Entry* entry = &table->entries[i];
     if (entry->key == NULL) continue;
 
+    // It's a non-tombstone entry.
     Entry* dest = findEntry(entries, capacity, entry->key);
     dest->key = entry->key;
     dest->value = entry->value;
+    table->count++;
   }
   FREE_ARRAY(Entry, table->entries, table->capacity);
   table->entries = entries;
@@ -119,7 +129,10 @@ bool tableSet(Table* table, ObjString* key, Value value) {
 
   Entry* entry = findEntry(table->entries, table->capacity, key);
   bool isNewKey = entry->key == NULL;
-  if (isNewKey) table->count++;
+  // Increment the count only if the new entry goes into an entirely empty
+  // bucket; if we're replacing a tombstone with a new entry, the bucket has
+  // already been accounted for and the count doesn't change.
+  if (isNewKey && IS_NIL(entry->value)) table->count++;
 
   entry->key = key;
   entry->value = value;
@@ -133,7 +146,9 @@ bool tableDelete(Table* table, ObjString* key) {
   Entry* entry = findEntry(table->entries, table->capacity, key);
   if (entry->key == NULL) return false;
 
-  // Place a tombstone in the entry
+  // Place a tombstone in the entry.
+  // NB we don't reduce the count when deleting an entry - because the count is
+  // the number of entries plus tombstones.
   entry->key = NULL;
   entry->value = BOOL_VAL(true);
   return true;
