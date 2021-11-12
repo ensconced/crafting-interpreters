@@ -133,6 +133,17 @@ static void declaration();
 static ParseRule* getRule(TokenType type);
 static void parsePrecedence(Precedence precedence);
 
+// Take the given token and add its lexeme to the chunk's constant table as a
+// string, returning the index of the constant in the constant table.
+static uint8_t identifierConstant(Token* name) {
+  return makeConstant(OBJ_VAL(copyString(name->start, name->length)));
+}
+
+static uint8_t parseVariable(const char* errorMessage) {
+  consume(TOKEN_IDENTIFIER, errorMessage);
+  return identiferConstant(&parser.previous);
+}
+
 static void binary() {
   TokenType operatorType = parser.previous.type;
   ParseRule* rule = getRule(operatorType);
@@ -296,6 +307,19 @@ static void expression() {
   parsePrecedence(PREC_ASSIGNMENT);
 }
 
+static void varDeclaration() {
+  uint8_t global = parseVariable("Expect variable name.");
+  if (match(TOKEN_EQUAL)) {
+    expression();
+  } else {
+    // If the user doesn't initialize the variable, implicitly initialize it to
+    // nil.
+    emitByte(OP_NIL);
+  }
+  consume(TOKEN_SEMICOLON, "Expect, ';' after variable declaration.");
+  defineVariable(global);
+}
+
 // An "expression statement" is simply an expression followed by a semicolon.
 static void expressionStatement() {
   expression();
@@ -309,7 +333,40 @@ static void printStatement() {
   emitByte(OP_PRINT);
 }
 
-static void declaration() { statement(); }
+static void synchronize() {
+  parser.panicMode = false;
+
+  // Skip tokens indiscriminately until we reach something that looks like a
+  // statment boundary. We recognize the boundary by looking for a preceding
+  // token that can end a statement, like a semicolon.
+  while (parser.current.type != TOKEN_EOF) {
+    if (parser.previous.type == TOKEN_SEMICOLON) return;
+    switch (parser.current.type) {
+      case TOKEN_CLASS:
+      case TOKEN_FUN:
+      case TOKEN_VAR:
+      case TOKEN_FOR:
+      case TOKEN_IF:
+      case TOKEN_WHILE:
+      case TOKEN_PRINT:
+      case TOKEN_RETURN:
+        return;
+
+      default:;  // Do nothing
+    }
+
+    advance();
+  }
+}
+
+static void declaration() {
+  if (match(TOKEN_VAR)) {
+    varDeclaration();
+  } else {
+    statement();
+  }
+  if (parser.panicMode) synchronize();
+}
 
 static void statement() {
   if (match(TOKEN_PRINT)) {
