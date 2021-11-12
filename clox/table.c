@@ -188,6 +188,6 @@ ObjString* tableFindString(Table* table, const char* chars, int length,
       // We found it
       return entry->key;
     }
+    index = (index + 1) % table->capacity;
   }
-  index = (index + 1) % table->capacity;
 }
