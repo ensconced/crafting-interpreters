@@ -21,8 +21,8 @@ void disassembleChunk(Chunk* chunk, const char* name) {
   printf("== %s ==\n", name);
 
   for (int offset = 0; offset < chunk->count;) {
-    // instructions can have different sizes so it makes sense to let disasseble
-    // increment offset by the required amount
+    // instructions can have different sizes so it makes sense to let
+    // disassemble increment offset by the required amount.
     offset = disassembleInstruction(chunk, offset);
   }
 }
@@ -49,6 +49,8 @@ int disassembleInstruction(Chunk* chunk, int offset) {
       return simpleInstruction("OP_TRUE", offset);
     case OP_FALSE:
       return simpleInstruction("OP_FALSE", offset);
+    case OP_POP:
+      return simpleInstruction("OP_POP", offset);
     case OP_EQUAL:
       return simpleInstruction("OP_EQUAL", offset);
     case OP_GREATER:
