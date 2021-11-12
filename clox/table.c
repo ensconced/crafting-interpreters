@@ -41,10 +41,9 @@ static Entry* findEntry(Entry* entries, int capacity, ObjString* key) {
       If the key in the bucket is equal to the key we're looking for, then that
       key is already present in the table. If we're doing a lookup, that's good
       - we've found the key we seek. If we're an insert, this means we'll be
-      replacing the value for that key instead of adding a new entry. NB it
-      looks like we're using == to see if two strings are equal here...which of
-      course doesn't work in C - there could be two copies of the same string
-      at different places in memory. We'll solve this later on...
+      replacing the value for that key instead of adding a new entry. NB  we're
+      using == to see if two strings are equal here...which of course doesn't
+      generally work in C - but it works here thanks to string interning.
     */
     if (entry->key == NULL) {
       if (IS_NIL(entry->value)) {
@@ -161,4 +160,34 @@ void tableAddAll(Table* from, Table* to) {
       tableSet(to, entry->key, entry->value);
     }
   }
+}
+
+ObjString* tableFindString(Table* table, const char* chars, int length,
+                           uint32_t hash) {
+  // This is all very similar to findEntry, except that we pass in the raw
+  // character array of the key we're looking for instead of an ObjString. At
+  // the point that we call this, we haven't created an ObjString yet.
+  // Second, when checking to see if we found the key, we look at the actual
+  // strings. We first see if they have matching lengths and hashes. Those are
+  // quick to check and if they aren't equal, the strings definitely aren't the
+  // same.
+  if (table->count == 0) return NULL;
+  uint32_t index = hash % table->capacity;
+  for (;;) {
+    Entry* entry = &table->entries[index];
+    if (entry->key == NULL) {
+      // Stop if we find an empty non-tombstone entry
+      if (IS_NIL(entry->value)) return NULL;
+      // If there is a hash collision, we do an actual character-by-character
+      // string comparison. This is the one place in our VM where we actually
+      // test strings for textual equality. We do it here to deduplicate strings
+      // and then the rest of the VM can take for granted that any two strings
+      // at different addresses in memory must have different contents.
+    } else if (entry->key->length == length &&
+               memcmp(entry->key->chars, chars, length) == 0) {
+      // We found it
+      return entry->key;
+    }
+  }
+  index = (index + 1) % table->capacity;
 }
