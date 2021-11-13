@@ -27,6 +27,7 @@
     "type_traits": "cpp",
     "utility": "cpp",
     "string_view": "c",
-    "random": "c"
+    "random": "c",
+    "typeinfo": "c"
   }
 }

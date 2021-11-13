@@ -31,7 +31,7 @@ typedef enum {
   PREC_PRIMARY,
 } Precedence;
 
-typedef void (*ParseFn)();
+typedef void (*ParseFn)(bool canAssign);
 
 typedef struct {
   ParseFn prefix;
@@ -148,7 +148,7 @@ static void defineVariable(uint8_t global) {
   emitBytes(OP_DEFINE_GLOBAL, global);
 }
 
-static void binary() {
+static void binary(bool canAssign) {
   TokenType operatorType = parser.previous.type;
   ParseRule* rule = getRule(operatorType);
   parsePrecedence((Precedence)(rule->precedence + 1));
@@ -189,7 +189,7 @@ static void binary() {
   }
 }
 
-static void literal() {
+static void literal(bool canAssign) {
   switch (parser.previous.type) {
     case TOKEN_FALSE:
       emitByte(OP_FALSE);
@@ -205,7 +205,7 @@ static void literal() {
   }
 }
 
-static void grouping() {
+static void grouping(bool canAssign) {
   expression();
   consume(TOKEN_RIGHT_PAREN, "Expect ')' after expression.");
 }
@@ -214,25 +214,35 @@ static void emitConstant(Value value) {
   emitBytes(OP_CONSTANT, makeConstant(value));
 }
 
-static void number() {
+static void number(bool canAssign) {
   double value = strtod(parser.previous.start, NULL);
   emitConstant(NUMBER_VAL(value));
 }
 
-static void string() {
+static void string(bool canAssign) {
   // strip quotation marks, create string object, and wrap in a Value
   emitConstant(OBJ_VAL(
       copyString(parser.previous.start + 1, parser.previous.length - 2)));
 }
 
-static void namedVariable(Token name) {
+static void namedVariable(Token name, bool canAssign) {
   uint8_t arg = identifierConstant(&name);
-  emitBytes(OP_GET_GLOBAL, arg);
+
+  if (canAssign && match(TOKEN_EQUAL)) {
+    // assignment
+    expression();
+    emitBytes(OP_SET_GLOBAL, arg);
+  } else {
+    // variable access
+    emitBytes(OP_GET_GLOBAL, arg);
+  }
 }
 
-static void variable() { namedVariable(parser.previous); }
+static void variable(bool canAssign) {
+  namedVariable(parser.previous, canAssign);
+}
 
-static void unary() {
+static void unary(bool canAssign) {
   TokenType operatorType = parser.previous.type;
   // Compile the operand. We use the unary operator's own precedence here to
   // permit nested unary operations.
@@ -301,12 +311,21 @@ static void parsePrecedence(Precedence precedence) {
     error("Expect expression");
     return;
   }
-  prefixRule();
+
+  // Since assignment is the lowest-precedence expression, the only time we
+  // allow an assignment is when parsing an assignment expression or top-level
+  // expression like in an expression statement.
+  bool canAssign = precedence <= PREC_ASSIGNMENT;
+  prefixRule(canAssign);
 
   while (precedence <= getRule(parser.current.type)->precedence) {
     advance();
     ParseFn infixRule = getRule(parser.previous.type)->infix;
-    infixRule();
+    infixRule(canAssign);
+  }
+
+  if (canAssign && match(TOKEN_EQUAL)) {
+    error("Invalid assignment target.");
   }
 }
 

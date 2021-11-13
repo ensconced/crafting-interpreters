@@ -159,6 +159,27 @@ static InterpretResult run() {
         pop();
         break;
       }
+      case OP_SET_GLOBAL: {
+        ObjString* name = READ_STRING();
+        // tableSet returns true if it's setting a new key,
+        // false if overwriting an existing one.
+        if (tableSet(&vm.globals, name, peek(0))) {
+          // Lox doesn't do implicit variable declaration, so it's a runtime
+          // error to try to assign to a variable that doesn't yet exist.
+          // The call to tableSet will have stored the value in the global
+          // variable table even though it wasn't previously defined - this fact
+          // would be visible in a REPL session, since it keeps running even
+          // after the runtime error is reported. So we also take care to delete
+          // that zombie value from the table.
+          tableDelete(&vm.globals, name);
+          runtimeError("Undefined variable '%s'.", name->chars);
+          return INTERPRET_RUNTIME_ERROR;
+        }
+        // Assignemtn is an expression, so unlike OP_DEFINE_GLOBAL, we don't pop
+        // the value off the stack - we want to leave it there in case the
+        // assignment is nested inside some larger expression.
+        break;
+      }
       case OP_EQUAL: {
         Value b = pop();
         Value a = pop();
