@@ -138,6 +138,25 @@ static InterpretResult run() {
       case OP_POP:
         pop();
         break;
+      case OP_GET_LOCAL: {
+        uint8_t slot = READ_BYTE();
+        // It might seem redundant to push the local's value onto the stack
+        // since it's already on the stack lower down somewhere. The problem is
+        // that the other bytecode instructions only look for data at the *top*
+        // of the stack - this is the core aspect that makes our bytecode
+        // instruction set "stack-based".
+        push(vm.stack[slot]);
+        break;
+      }
+      case OP_SET_LOCAL: {
+        uint8_t slot = READ_BYTE();
+        // Note again, we don't pop the value from the stack. Assignment is an
+        // expression, and every expression produces a value. The value of an
+        // assignment expression is the assigned value itself, so the VM just
+        // leaves the value on the stack.
+        vm.stack[slot] = peek(0);
+        break;
+      }
       case OP_GET_GLOBAL: {
         ObjString* name = READ_STRING();
         Value value;
