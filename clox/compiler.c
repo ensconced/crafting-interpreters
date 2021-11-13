@@ -39,7 +39,29 @@ typedef struct {
   Precedence precedence;
 } ParseRule;
 
+typedef struct {
+  Token name;
+  // Zero is the global scope, 1 is the first top-level block, two is inside
+  // that, etc.
+  int depth;
+} Local;
+
+typedef struct {
+  // A simple, flat array of all locals that are in scope during each point in
+  // the compilation process. They are ordered in the array in the order that
+  // their declarations appear in the code. (This is a single-pass compiler, so
+  // it's not like we have too many other options for how to order them in the
+  // array). Since the instruction operand we'll use to encode a local is a
+  // single byte, our VM has a hard limit on the number of locals that can be in
+  // scope at once. That means we can also give the locals array a fixed size.
+  Local locals[UINT8_COUNT];
+  int localCount;
+  // The number of blocks surrounding the current bit of code we're compiling.
+  int scopeDepth;
+} Compiler;
+
 Parser parser;
+Compiler* current = NULL;
 Chunk* compilingChunk;
 
 static Chunk* currentChunk() { return compilingChunk; }
@@ -212,6 +234,12 @@ static void grouping(bool canAssign) {
 
 static void emitConstant(Value value) {
   emitBytes(OP_CONSTANT, makeConstant(value));
+}
+
+static void initCompiler(Compiler* compiler) {
+  compiler->localCount = 0;
+  compiler->scopeDepth = 0;
+  current = compiler;
 }
 
 static void number(bool canAssign) {
@@ -408,6 +436,8 @@ static void statement() {
 
 bool compile(const char* source, Chunk* chunk) {
   initScanner(source);
+  Compiler compiler;
+  initCompiler(&compiler);
   compilingChunk = chunk;
   parser.hadError = false;
   parser.panicMode = false;
