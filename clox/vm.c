@@ -38,10 +38,16 @@ static void runtimeError(const char* format, ...) {
 void initVM() {
   resetStack();
   vm.objects = NULL;
+  initTable(&vm.globals);
   initTable(&vm.strings);
 }
 
 void freeVM() {
+  /*
+    The process will free everything on exit, but it feels undignified to
+    require the operating system to clean up our mess.
+  */
+  freeTable(&vm.globals);
   freeTable(&vm.strings);
   freeObjects();
 }
@@ -81,6 +87,7 @@ static void concatenate() {
 static InterpretResult run() {
 #define READ_BYTE() (*vm.ip++)
 #define READ_CONSTANT() (vm.chunk->constants.values[READ_BYTE()])
+#define READ_STRING() AS_STRING(READ_CONSTANT())
 
 // We need this macro to expand to a series of statements. To be careful macro
 // authors, we want to ensure those statements all end up in the same scope when
@@ -131,6 +138,17 @@ static InterpretResult run() {
       case OP_POP:
         pop();
         break;
+      case OP_DEFINE_GLOBAL: {
+        ObjString* name = READ_STRING();
+        // Not that we don't pop the value until after we add it to the hash
+        // table. That ensures the VM can still find the value if a garbage
+        // collection is triggered right in the middle of adding it to the hash
+        // table, which is a distinct possibility since the hash table requires
+        // dynamic allocation when it resizes.
+        tableSet(&vm.globals, name, peek(0));
+        pop();
+        break;
+      }
       case OP_EQUAL: {
         Value b = pop();
         Value a = pop();
@@ -188,6 +206,7 @@ static InterpretResult run() {
 
 #undef READ_BYTE
 #undef READ_CONSTANT
+#undef READ_STRING
 #undef BINARY_OP
 }
 
