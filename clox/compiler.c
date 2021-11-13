@@ -5,6 +5,7 @@
 
 #include "common.h"
 #include "scanner.h"
+#include "string.h"
 
 #ifdef DEBUG_PRINT_CODE
 #include "debug.h"
@@ -149,7 +150,21 @@ static void endCompiler() {
 
 static void beginScope() { current->scopeDepth++; }
 
-static void endScope() { current->scopeDepth--; }
+static void endScope() {
+  current->scopeDepth--;
+  // walk backward through the local array, looking for any variables declared
+  // at the scope depth we just left. We discard them simply by decrementing the
+  // length of the array. There's a runtime component to this too; local
+  // variables occupy slots on the stack. When a local variable goes out of
+  // scope, that slot is no longer needed and should be freed. So, for each
+  // variable that we discard, we also emit an OP_POP instruction to pop it from
+  // the stack.
+  while (current->localCount > 0 &&
+         current->locals[current->localCount - 1].depth > current->scopeDepth) {
+    emitByte(OP_POP);
+    current->localCount--;
+  }
+}
 
 // forward declarations
 static void expression();
@@ -159,18 +174,83 @@ static void declaration();
 static ParseRule* getRule(TokenType type);
 static void parsePrecedence(Precedence precedence);
 
-// Take the given token and add its lexeme to the chunk's constant table as a
+// Takes the given token and adds its lexeme to the chunk's constant table as a
 // string, returning the index of the constant in the constant table.
 static uint8_t identifierConstant(Token* name) {
   return makeConstant(OBJ_VAL(copyString(name->start, name->length)));
 }
 
+static bool identifiersEqual(Token* a, Token* b) {
+  if (a->length != b->length) return false;
+  return memcmp(a->start, b->start, a->length) == 0;
+}
+
+static void addLocal(Token name) {
+  if (current->localCount == UINT8_COUNT) {
+    error("Too many local variables in function.");
+    return;
+  }
+
+  Local* local = &current->locals[current->localCount++];
+  local->name = name;
+  local->depth = current->scopeDepth;
+}
+
+static void declareVariable() {
+  // This is the point where the compiler records the existence of the variable.
+  // We only do this for locals, so if we're in the top-level global scope, we
+  // just bail out. Because global variables are late-bound, the compiler
+  // doesn't keep track of which declarations for them it has seen.
+  if (current->scopeDepth == 0) return;
+
+  // Add the local variable to the compiler's list of variables in the current
+  // scope.
+  Token* name = &parser.previous;
+
+  // At the top level, Lox allows redeclaring a variable with the same name as a
+  // previous declaration because that's useful for the REPL. But inside a local
+  // scope, that's a pretty weird thing to do. It's likely to be a mistake, so
+  // we make it an error.
+  // It's okay to have two variables with the same name in *different* scopes,
+  // even when the scopes overlap such that both are visible at the same name
+  // (that's shadowing). It's only an error to have two variables with the same
+  // name in the *same* local scope.
+  for (int i = current->localCount - 1; i >= 0; i--) {
+    Local* local = &current->locals[i];
+    if (local->depth != -1 && local->depth < current->scopeDepth) {
+      break;
+    }
+
+    if (identifiersEqual(name, &local->name)) {
+      error("Already a variable with this name in this scope.");
+    }
+  }
+  addLocal(*name);
+}
+
 static uint8_t parseVariable(const char* errorMessage) {
   consume(TOKEN_IDENTIFIER, errorMessage);
+
+  declareVariable();
+  // Exit the function if we're in a local scope. At runtime,
+  // locals aren't looked up by name. There's no need to stuff the variable's
+  // name into the constant table, so if the declaration is inside a local
+  // scope, we return a dummy table index instead.
+  if (current->scopeDepth > 0) return 0;
+
   return identifierConstant(&parser.previous);
 }
 
 static void defineVariable(uint8_t global) {
+  if (current->scopeDepth > 0) {
+    // Local variable - at this point the VM has already executed the code for
+    // the variable's initializer (or the implicit nil if the user omitted the
+    // initialize), and that value is sitting right on top of the stack as the
+    // only remaining temporary. We also know that new locals are allocated at
+    // the top of the stack...right where that value already is. Thus there's
+    // nothing more to do. The temporary simply becomes the local variable.
+    return;
+  }
   emitBytes(OP_DEFINE_GLOBAL, global);
 }
 
