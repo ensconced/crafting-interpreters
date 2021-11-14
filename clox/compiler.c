@@ -133,7 +133,7 @@ static void emitLoop(int loopStart) {
   int offset = currentChunk()->count - loopStart + 2;
   if (offset > UINT16_MAX) error("Loop body too large.");
 
-  emitByte(offset >> 8) & 0xff;
+  emitByte((offset >> 8) & 0xff);
   emitByte(offset & 0xff);
 }
 
@@ -155,6 +155,24 @@ static uint8_t makeConstant(Value value) {
     return 0;
   }
   return (uint8_t)constant;
+}
+
+static void emitConstant(Value value) {
+  emitBytes(OP_CONSTANT, makeConstant(value));
+}
+
+static void patchJump(int offset) {
+  // -2 to adjust for the bytecode for the jump offset itself
+  int jump = currentChunk()->count - offset - 2;
+
+  if (jump > UINT16_MAX) {
+    error("Too much code to jump over.");
+  }
+
+  // set most significant byte
+  currentChunk()->code[offset] = (jump >> 8) & 0xff;
+  // set least significant byte
+  currentChunk()->code[offset + 1] = jump & 0xff;
 }
 
 static void endCompiler() {
@@ -360,24 +378,6 @@ static void grouping(bool canAssign) {
   consume(TOKEN_RIGHT_PAREN, "Expect ')' after expression.");
 }
 
-static void emitConstant(Value value) {
-  emitBytes(OP_CONSTANT, makeConstant(value));
-}
-
-static void patchJump(int offset) {
-  // -2 to adjust for the bytecode for the jump offset itself
-  int jump = currentChunk()->count - offset - 2;
-
-  if (jump > UINT16_MAX) {
-    error("Too much code to jump over.");
-  }
-
-  // set most significant byte
-  currentChunk()->code[offset] = (jump >> 8) & 0xff;
-  // set least significant byte
-  currentChunk()->code[offset + 1] = jump & 0xff;
-}
-
 static void initCompiler(Compiler* compiler) {
   compiler->localCount = 0;
   compiler->scopeDepth = 0;
@@ -407,7 +407,7 @@ static void string(bool canAssign) {
 }
 
 static void namedVariable(Token name, bool canAssign) {
-  uint8_t getop, setOp;
+  uint8_t getOp, setOp;
   // First, try to find a local variable with the same name.
   int arg = resolveLocal(current, &name);
 
@@ -560,7 +560,7 @@ static void expressionStatement() {
 
 static void forStatement() {
   beginScope();
-  consume(TOKEN_LEFT_PAREN, "Expect '(' after 'for'".);
+  consume(TOKEN_LEFT_PAREN, "Expect '(' after 'for'.");
   if (match(TOKEN_SEMICOLON)) {
     // no initializer
   } else if (match(TOKEN_VAR)) {
@@ -587,6 +587,19 @@ static void forStatement() {
 
   consume(TOKEN_SEMICOLON, "Expect ';'.");
   consume(TOKEN_RIGHT_PAREN, "Expect ')' after for clauses.");
+
+  if (!match(TOKEN_RIGHT_PAREN)) {
+    int bodyJump = emitJump(OP_JUMP);
+    int incrementStart = currentChunk()->count;
+    expression();
+    emitByte(OP_POP);
+    consume(TOKEN_RIGHT_PAREN, "Expect ')' after for clauses.");
+
+    emitLoop(loopStart);
+    loopStart = incrementStart;
+    patchJump(bodyJump);
+  }
+
   statement();
   emitLoop(loopStart);
 
@@ -693,36 +706,32 @@ static void declaration() {
 static void statement() {
   if (match(TOKEN_PRINT)) {
     printStatement();
-    else if (match(TOKEN_FOR)) {
-      forStatement();
-    }
-    else if (match(TOKEN_IF)) {
-      ifStatement();
-    }
-    else if (match(TOKEN_WHILE)) {
-      whileStatement();
-    }
-    else if (match(TOKEN_LEFT_BRACE)) {
-      beginScope();
-      block();
-      endScope();
-    }
-    else {
-      expressionStatement();
-    }
+  } else if (match(TOKEN_FOR)) {
+    forStatement();
+  } else if (match(TOKEN_IF)) {
+    ifStatement();
+  } else if (match(TOKEN_WHILE)) {
+    whileStatement();
+  } else if (match(TOKEN_LEFT_BRACE)) {
+    beginScope();
+    block();
+    endScope();
+  } else {
+    expressionStatement();
   }
+}
 
-  bool compile(const char* source, Chunk* chunk) {
-    initScanner(source);
-    Compiler compiler;
-    initCompiler(&compiler);
-    compilingChunk = chunk;
-    parser.hadError = false;
-    parser.panicMode = false;
-    advance();
-    while (!match(TOKEN_EOF)) {
-      declaration();
-    }
-    endCompiler();
-    return !parser.hadError;
+bool compile(const char* source, Chunk* chunk) {
+  initScanner(source);
+  Compiler compiler;
+  initCompiler(&compiler);
+  compilingChunk = chunk;
+  parser.hadError = false;
+  parser.panicMode = false;
+  advance();
+  while (!match(TOKEN_EOF)) {
+    declaration();
   }
+  endCompiler();
+  return !parser.hadError;
+}
