@@ -559,7 +559,19 @@ static void expressionStatement() {
 }
 
 static void forStatement() {
+  beginScope();
   consume(TOKEN_LEFT_PAREN, "Expect '(' after 'for'".);
+  if (match(TOKEN_SEMICOLON)) {
+    // no initializer
+  } else if (match(TOKEN_VAR)) {
+    varDeclaration();
+  } else {
+    // Use expressionStatement instead of just expression here so that it will
+    // look for a semicolon too and emit an OP_POP to discard the value - we
+    // don't want the initializer to leave anything on the stack.
+    expressionStatement();
+  }
+
   consume(TOKEN_SEMICOLON, "Expect ';'.");
 
   int loopStart = currentChunk()->count;
@@ -567,6 +579,7 @@ static void forStatement() {
   consume(TOKEN_RIGHT_PAREN, "Expect ')' after for clauses.");
   statement();
   emitLoop(loopStart);
+  endScope();
 }
 
 static void ifStatement() {
