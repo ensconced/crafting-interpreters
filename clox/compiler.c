@@ -128,6 +128,15 @@ static void emitBytes(uint8_t byte1, uint8_t byte2) {
   emitByte(byte2);
 }
 
+static int emitJump(uint8_t instruction) {
+  emitByte(instruction);
+  // Use two bytes for the jump offset operand. A 16 bit offset lets us jump
+  // over up to 65,535 bytes of code, which should be plenty for our needs.
+  emitByte(0xff);
+  emitByte(0xff);
+  return currentChunk()->count - 1;
+}
+
 static void emitReturn() { emitByte(OP_RETURN); }
 
 static uint8_t makeConstant(Value value) {
@@ -339,6 +348,20 @@ static void emitConstant(Value value) {
   emitBytes(OP_CONSTANT, makeConstant(value));
 }
 
+static void patchJump(int offset) {
+  // -2 to adjust for the bytecode for the jump offset itself
+  int jump = currentChunk()->count - offset - 2;
+
+  if (jump > UINT16_MAX) {
+    error("Too much code to jump over.");
+  }
+
+  // set most significant byte
+  currentChunk()->code[offset] = (jump >> 8) & 0xff;
+  // set least significant byte
+  currentChunk()->code[offset + 1] = jump & 0xff;
+}
+
 static void initCompiler(Compiler* compiler) {
   compiler->localCount = 0;
   compiler->scopeDepth = 0;
@@ -508,6 +531,28 @@ static void expressionStatement() {
   emitByte(OP_POP);
 }
 
+static void ifStatement() {
+  consume(TOKEN_LEFT_PAREN, "Expect '(' after 'if'.");
+  expression();
+  // The closing ) doesn't actually do anything useful. It's just there to
+  // because unmatched parens look bad to the human eye.
+  consume(TOKEN_RIGHT_PAREN, "Expect ')' after condition.");
+
+  // OP_JUMP_IF_FALSE needs an operand to know how much to offset the ip i.e.
+  // how many bytes of code to skip. If the condition is falsey it will adjust
+  // the ip by that amount. But when we're writing the OP_JUMP_IF_FALSE
+  // instruction, we haven't compiled the "then" branch yet, so we don't know
+  // how much bytecode it contains.
+  // To work around this, we use a classic trick called "backpatching". We emit
+  // the jump instruction first with a placeholder offset operand. We keep track
+  // of where that half-finished instruction is. Next, we compile the "then"
+  // body. Once that's done, we know how far to jump. So we go back and replace
+  // that placeholder offset with the real one now that we can calculate it.
+  int thenJump = emitJump(OP_JUMP_IF_FALSE);
+  statement();
+  patchJump(thenJump);
+}
+
 static void printStatement() {
   expression();
   consume(TOKEN_SEMICOLON, "Expect ';' after value.");
@@ -552,6 +597,8 @@ static void declaration() {
 static void statement() {
   if (match(TOKEN_PRINT)) {
     printStatement();
+  } else if (match(TOKEN_IF)) {
+    ifStatement();
   } else if (match(TOKEN_LEFT_BRACE)) {
     beginScope();
     block();
