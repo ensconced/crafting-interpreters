@@ -143,7 +143,7 @@ static int emitJump(uint8_t instruction) {
   // over up to 65,535 bytes of code, which should be plenty for our needs.
   emitByte(0xff);
   emitByte(0xff);
-  return currentChunk()->count - 1;
+  return currentChunk()->count - 2;
 }
 
 static void emitReturn() { emitByte(OP_RETURN); }
@@ -561,6 +561,8 @@ static void expressionStatement() {
 static void forStatement() {
   beginScope();
   consume(TOKEN_LEFT_PAREN, "Expect '(' after 'for'.");
+
+  // initializer
   if (match(TOKEN_SEMICOLON)) {
     // no initializer
   } else if (match(TOKEN_VAR)) {
@@ -572,8 +574,6 @@ static void forStatement() {
     expressionStatement();
   }
 
-  consume(TOKEN_SEMICOLON, "Expect ';'.");
-
   int loopStart = currentChunk()->count;
   int exitJump = -1;
   if (!match(TOKEN_SEMICOLON)) {
@@ -584,9 +584,6 @@ static void forStatement() {
     exitJump = emitJump(OP_JUMP_IF_FALSE);
     emitByte(OP_POP);  // condition
   }
-
-  consume(TOKEN_SEMICOLON, "Expect ';'.");
-  consume(TOKEN_RIGHT_PAREN, "Expect ')' after for clauses.");
 
   if (!match(TOKEN_RIGHT_PAREN)) {
     int bodyJump = emitJump(OP_JUMP);
