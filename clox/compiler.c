@@ -549,8 +549,22 @@ static void ifStatement() {
   // body. Once that's done, we know how far to jump. So we go back and replace
   // that placeholder offset with the real one now that we can calculate it.
   int thenJump = emitJump(OP_JUMP_IF_FALSE);
+  // pop the value that's left on the stack from evaluating the condition
+  // expression - this will run if the condition was truthy...otherwise there's
+  // another one below which will run instead.
+  emitByte(OP_POP);
   statement();
+  int elseJump = emitJump(OP_JUMP);
+
   patchJump(thenJump);
+  // pop the value that's left on the stack from evaluating the condition
+  // expression. If the user didn't write an "else" clause then this little
+  // instruction is kind of like an implicit else clause which just serves to
+  // remove the condition value from the stack.
+  emitByte(OP_POP);
+
+  if (match(TOKEN_ELSE)) statement();
+  patchJump(elseJump);
 }
 
 static void printStatement() {
