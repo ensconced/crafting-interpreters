@@ -1,16 +1,21 @@
 #ifndef clox_object_h
 #define clox_object_h
 
+#include "chunk.h"
 #include "common.h"
 #include "value.h"
 
 #define OBJ_TYPE(value) (AS_OBJ(value)->type)
+
+#define IS_FUNCTION(value) isObjType(value, OBJ_FUNCTION)
 #define IS_STRING(value) isObjType(value, OBJ_STRING)
 
+#define AS_FUNCTION(value) ((ObjFunction*)AS_OBJ(value))
 #define AS_STRING(value) ((ObjString*)AS_OBJ(value))
 #define AS_CSTRING(value) (((ObjString*)AS_OBJ(value))->chars)
 
 typedef enum {
+  OBJ_FUNCTION,
   OBJ_STRING,
 } ObjType;
 
@@ -18,6 +23,16 @@ struct Obj {
   ObjType type;
   struct Obj* next;
 };
+
+typedef struct {
+  // Functions are first class in Lox, so they need to be actual Lox objects.
+  // Thus ObjFunction has the same Obj header that all object types share.
+  Obj obj;
+  // The number of parameters the function expects.
+  int arity;
+  Chunk chunk;
+  ObjString* name;
+} ObjFunction;
 
 struct ObjString {
   Obj obj;
@@ -31,6 +46,8 @@ struct ObjString {
   // the string's hash.
   uint32_t hash;
 };
+
+ObjFunction newFunction();
 
 // copyString assumes it cannot take ownership of the characters you pass in.
 // Instead, it conservatively creates a copy of the characters on the heap that
