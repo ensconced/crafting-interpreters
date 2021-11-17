@@ -47,7 +47,15 @@ typedef struct {
   int depth;
 } Local;
 
+typedef enum {
+  TYPE_FUNCTION,
+  TYPE_SCRIPT,
+} FunctionType;
+
 typedef struct {
+  ObjFunction* function;
+  FunctionType type;
+
   // A simple, flat array of all locals that are in scope during each point in
   // the compilation process. They are ordered in the array in the order that
   // their declarations appear in the code. (This is a single-pass compiler, so
@@ -65,7 +73,7 @@ Parser parser;
 Compiler* current = NULL;
 Chunk* compilingChunk;
 
-static Chunk* currentChunk() { return compilingChunk; }
+static Chunk* currentChunk() { return &current->function->chunk; }
 
 static void errorAt(Token* token, const char* message) {
   fprintf(stderr, "[line %d] Error", token->line);
