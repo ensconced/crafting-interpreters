@@ -71,7 +71,6 @@ typedef struct {
 
 Parser parser;
 Compiler* current = NULL;
-Chunk* compilingChunk;
 
 static Chunk* currentChunk() { return &current->function->chunk; }
 
@@ -390,7 +389,9 @@ static void grouping(bool canAssign) {
   consume(TOKEN_RIGHT_PAREN, "Expect ')' after expression.");
 }
 
-static void initCompiler(Compiler* compiler) {
+static void initCompiler(Compiler* compiler, FunctionType type) {
+  compiler->function = NULL;
+  compiler->type = type;
   compiler->localCount = 0;
   compiler->scopeDepth = 0;
   compiler->function = newFunction();
@@ -743,7 +744,6 @@ ObjFunction* compile(const char* source) {
   initScanner(source);
   Compiler compiler;
   initCompiler(&compiler, TYPE_SCRIPT);
-  compilingChunk = chunk;
   parser.hadError = false;
   parser.panicMode = false;
   advance();
@@ -751,5 +751,5 @@ ObjFunction* compile(const char* source) {
     declaration();
   }
   ObjFunction* function = endCompiler();
-  return !parser.hadError ? NULL : function;
+  return parser.hadError ? NULL : function;
 }

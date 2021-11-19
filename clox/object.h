@@ -47,7 +47,7 @@ struct ObjString {
   uint32_t hash;
 };
 
-ObjFunction newFunction();
+ObjFunction* newFunction();
 
 // copyString assumes it cannot take ownership of the characters you pass in.
 // Instead, it conservatively creates a copy of the characters on the heap that

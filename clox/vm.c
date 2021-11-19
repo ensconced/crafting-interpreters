@@ -20,6 +20,7 @@ static void resetStack() {
   // in them. The only initialization we need is to set stackTop to point to the
   // beginning of the array to indicate that the stack is empty.
   vm.stackTop = vm.stack;
+  vm.frameCount = 0;
 }
 
 static void runtimeError(const char* format, ...) {
@@ -29,8 +30,10 @@ static void runtimeError(const char* format, ...) {
   va_end(args);
   fputs("\n", stderr);
 
-  size_t instruction = vm.ip - vm.chunk->code - 1;
-  int line = vm.chunk->lines[instruction];
+  CallFrame* frame = &vm.frames[vm.frameCount - 1];
+  size_t instruction = frame->ip - frame->function->chunk.code - 1;
+  int line = frame->function->chunk.lines[instruction];
+
   fprintf(stderr, "[line %d] in script\n", line);
   resetStack();
 }
@@ -85,9 +88,15 @@ static void concatenate() {
 }
 
 static InterpretResult run() {
-#define READ_BYTE() (*vm.ip++)
-#define READ_CONSTANT() (vm.chunk->constants.values[READ_BYTE()])
-#define READ_SHORT() (vm.ip += 2, (uint16_t)((vm.ip[-2] << 8) | vm.ip[-1]))
+  // We could access the current frame by going through the CallFrame array
+  // every time, but that's verbose. Most importantly, storing the frame in a
+  // local variable encourages the C compiler to keep that pointer in a
+  // register. That speeds up access to the frame's ip.
+  CallFrame* frame = &vm.frames[vm.frameCount - 1];
+#define READ_BYTE() (*frame->ip++)
+#define READ_SHORT() \
+  (frame->ip += 2, (uint16_t)((frame->ip[-2] << 8) | frame->ip[-1]))
+#define READ_CONSTANT() (frame->function->chunk.constants.values[READ_BYTE()])
 #define READ_STRING() AS_STRING(READ_CONSTANT())
 
 // We need this macro to expand to a series of statements. To be careful macro
@@ -115,9 +124,9 @@ static InterpretResult run() {
     printf("\n");
 
     disassembleInstruction(
-        vm.chunk,
+        &frame->function->chunk,
         // a little bit of pointer arithmetic to get the offset
-        (int)(vm.ip - vm.chunk->code));
+        (int)(frame->ip - frame->function->chunk.code));
 #endif
 
     uint8_t instruction;
@@ -146,7 +155,7 @@ static InterpretResult run() {
         // that the other bytecode instructions only look for data at the *top*
         // of the stack - this is the core aspect that makes our bytecode
         // instruction set "stack-based".
-        push(vm.stack[slot]);
+        push(frame->slots[slot]);
         break;
       }
       case OP_SET_LOCAL: {
@@ -155,7 +164,7 @@ static InterpretResult run() {
         // expression, and every expression produces a value. The value of an
         // assignment expression is the assigned value itself, so the VM just
         // leaves the value on the stack.
-        vm.stack[slot] = peek(0);
+        frame->slots[slot] = peek(0);
         break;
       }
       case OP_GET_GLOBAL: {
@@ -250,17 +259,17 @@ static InterpretResult run() {
       }
       case OP_JUMP: {
         uint16_t offset = READ_SHORT();
-        vm.ip += offset;
+        frame->ip += offset;
         break;
       }
       case OP_JUMP_IF_FALSE: {
         uint16_t offset = READ_SHORT();
-        if (isFalsey(peek(0))) vm.ip += offset;
+        if (isFalsey(peek(0))) frame->ip += offset;
         break;
       }
       case OP_LOOP: {
         uint16_t offset = READ_SHORT();
-        vm.ip -= offset;
+        frame->ip -= offset;
         break;
       }
       case OP_RETURN: {
@@ -278,27 +287,12 @@ static InterpretResult run() {
 }
 
 InterpretResult interpret(const char* source) {
-  Chunk chunk;
-  initChunk(&chunk);
-
-  if (!compile(source, &chunk)) {
-    freeChunk(&chunk);
-    return INTERPRET_COMPILE_ERROR;
-  }
-
-  vm.chunk = &chunk;
-  // The instruction pointer is an actual pointer into the middle of the
-  // bytecode array. This is better than using an integer index because it's
-  // faster to dereference a pointer than to look up an element in an array by
-  // index.
-  // We initialize ip by pointing it at the first byte of code in the chunk. We
-  // haven't executed that instruction yet, so ip points to the instruction
-  // *about to be executed*. This will be true during the entire time the VM is
-  // running; the IP always points to the next instruction, not the one
-  // currently being handled.
-  vm.ip = vm.chunk->code;
-
-  InterpretResult result = run();
-  freeChunk(&chunk);
-  return result;
+  ObjFunction* function = compile(source);
+  if (function == NULL) return INTERPRET_COMPILE_ERROR;
+  push(OBJ_VAL(function));
+  CallFrame* frame = &vm.frames[vm.frameCount++];
+  frame->function = function;
+  frame->ip = function->chunk.code;
+  frame->slots = vm.stack;
+  return run();
 }
