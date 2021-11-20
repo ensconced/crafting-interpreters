@@ -320,8 +320,34 @@ static InterpretResult run() {
         break;
       }
       case OP_RETURN: {
-        // Exit interpreter
-        return INTERPRET_OK;
+        // When a function returns a value, that value will be on top of the
+        // stack. We're about the discard the called function's entire stack
+        // window, so we pop that return value off and hang on to it.
+        Value result = pop();
+        // Then we discard the CallFrame for the returning function.
+        vm.frameCount--;
+        if (vm.frameCount == 0) {
+          // We've finished executing the top-level code. The entire program is
+          // done, so pop the main script function from the stack and exit the
+          // interpreter.
+          pop();
+          return INTERPRET_OK;
+        }
+        // Discard all the slots the callee was using for its parameters and
+        // local variables. That includes the same slots the caller used to pass
+        // the arguments. This means the top of the stack ends up right at the
+        // beginning of the returning function's stack window.
+        vm.stackTop = frame->slots;
+        // Push the return value back onto the stack at this new, lower
+        // location.
+        push(result);
+        // Update the run function's cached pointer to the current frame. Just
+        // like when we began a call, on the next iteration of the bytecode
+        // dispatch loop, the VM will read ip from that frame, and execution
+        // will jump back to the caller, right where it left off, immediately
+        // after the OP_CALL instruction.
+        frame = &vm.frames[vm.frameCount - 1];
+        break;
       }
     }
   }
