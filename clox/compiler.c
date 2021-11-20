@@ -439,7 +439,7 @@ static void initCompiler(Compiler* compiler, FunctionType type) {
     // compiiler outlives the compiler and persists until runtime, so it needs
     // its own heap-allocated name string that it can keep around.
     current->function->name =
-        copyString(parse.previous.start, parser.previous.length);
+        copyString(parser.previous.start, parser.previous.length);
   }
 
   Local* local = &current->locals[current->localCount++];
