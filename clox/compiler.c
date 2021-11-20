@@ -410,6 +410,16 @@ static void initCompiler(Compiler* compiler, FunctionType type) {
   compiler->function = newFunction();
   current = compiler;
 
+  if (type != TYPE_SCRIPT) {
+    // We're careful to create a copy of the name string. The lexeme points
+    // directly into the original source code string, which may get freed once
+    // the code is finished compiling. The function object we create in the
+    // compiiler outlives the compiler and persists until runtime, so it needs
+    // its own heap-allocated name string that it can keep around.
+    current->function->name =
+        copyString(parse.previous.start, parser.previous.length);
+  }
+
   Local* local = &current->locals[current->localCount++];
   // The compiler implicitly claims stack slot zero for the VM's own internal
   // use. We give it an empty name so that the user can't write an identifier
@@ -602,6 +612,18 @@ static void function(FunctionType type) {
   beginScope();
 
   consume(TOKEN_LEFT_PAREN, "Expect '(' after function name.");
+  if (!check(TOKEN_RIGHT_PAREN)) {
+    do {
+      current->function->arity++;
+      if (current->function->arity > 255) {
+        errorAtCurrent("Can't have more than 255 parameters");
+      }
+      // Semantically, a parameter is simply a local variable declared in the
+      // outermost lexical scope of the function body.
+      uint8_t constant = parseVariable("Expect parameter name.");
+      defineVariable(constant);
+    } while (match(TOKEN_COMMA));
+  }
   consume(TOKEN_RIGHT_PAREN, "Expect ')' after parameters.");
   consume(TOKEN_LEFT_BRACE, "Expect '{' before function body.");
   block();
