@@ -23,6 +23,7 @@ typedef enum {
   OP_MULTIPLY,
   OP_DIVIDE,
   OP_LOOP,
+  OP_CALL,
   OP_RETURN,
   OP_NOT,
   OP_NEGATE,

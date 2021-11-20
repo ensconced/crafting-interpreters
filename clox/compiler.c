@@ -332,6 +332,23 @@ static void defineVariable(uint8_t global) {
   emitBytes(OP_DEFINE_GLOBAL, global);
 }
 
+static uint8_t argumentList() {
+  uint8_t argCount = 0;
+  if (!check(TOKEN_RIGHT_PAREN)) {
+    do {
+      expression();
+      // We stuff the argument count into the bytecode as a single-byte operand,
+      // so we can only go up to 255.
+      if (argCount == 255) {
+        error("Can't have more than 255 arguments.");
+      }
+      argCount++;
+    } while (match(TOKEN_COMMA));
+  }
+  consume(TOKEN_RIGHT_PAREN, "Expect ')' after arguments");
+  return argCount;
+}
+
 static void and_(bool canAssign) {
   int endJump = emitJump(OP_JUMP_IF_FALSE);
   emitByte(OP_POP);
@@ -378,6 +395,11 @@ static void binary(bool canAssign) {
     default:
       return;  // Unreachable
   }
+}
+
+static void call(bool canAssign) {
+  uint8_t argCount = argumentList();
+  emitBytes(OP_CALL, argCount);
 }
 
 static void literal(bool canAssign) {
@@ -500,7 +522,12 @@ static void unary(bool canAssign) {
 }
 
 ParseRule rules[] = {
-    [TOKEN_LEFT_PAREN] = {grouping, NULL, PREC_NONE},
+    // A function call is basically an infix '(' operator between a
+    // high-precedence expression on the left for the thing being called
+    // (usually just a single identifier). Then the '(' in the middle, followed
+    // by the argument expressions separated by commas, and a final ')' to wrap
+    // it up at the end.
+    [TOKEN_LEFT_PAREN] = {grouping, call, PREC_CALL},
     [TOKEN_RIGHT_PAREN] = {NULL, NULL, PREC_NONE},
     [TOKEN_LEFT_BRACE] = {NULL, NULL, PREC_NONE},
     [TOKEN_RIGHT_BRACE] = {NULL, NULL, PREC_NONE},
