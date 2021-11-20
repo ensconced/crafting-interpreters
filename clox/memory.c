@@ -26,6 +26,10 @@ static void freeObject(Obj* object) {
       // lifetime for us.
       break;
     }
+    case OBJ_NATIVE: {
+      FREE(ObjNative, object);
+      break;
+    }
     case OBJ_STRING: {
       ObjString* string = (ObjString*)object;
       // We aren't only freeing the Obj itself. Since some object types also
