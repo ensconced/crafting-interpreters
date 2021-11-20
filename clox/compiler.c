@@ -52,7 +52,17 @@ typedef enum {
   TYPE_SCRIPT,
 } FunctionType;
 
-typedef struct {
+typedef struct Compiler {
+  // Inside the Compiler struct, we can't reference the Compiler *typedef* since
+  // that declaration hasn't finished yet. Instead, we give a name to the struct
+  // itself and use that for the field's type.
+  // Note that we won't need to dynamically allocate the Compiler structs. Each
+  // is stored as a local variable in the C stack - either in compile() or in
+  // function(). The linked list of Compilers threads through the C stack. The
+  // reason we can get an unbounded number of them is because our compiler uses
+  // recursive descent, so function() ends up calling itself recursively when
+  // you have nested function definitions.
+  struct Compiler* enclosing;
   ObjFunction* function;
   FunctionType type;
 
@@ -192,6 +202,7 @@ static ObjFunction* endCompiler() {
                                          : "<script>");
   }
 #endif
+  current = current->enclosing;
   return function;
 }
 
@@ -391,6 +402,7 @@ static void grouping(bool canAssign) {
 }
 
 static void initCompiler(Compiler* compiler, FunctionType type) {
+  compiler->enclosing = current;
   compiler->function = NULL;
   compiler->type = type;
   compiler->localCount = 0;
@@ -562,6 +574,26 @@ static void block() {
 }
 
 static void function(FunctionType type) {
+  // The compiler struct stores data like which slots are owned by which local
+  // variables, how many blocks of nesting we're currently in, etc. All of that
+  // is specific to a single function. But we need to handle compiling multiple
+  // functions nested within each other. The trick for managing that is to
+  // create a separate Compiler for each function being compiled. When we start
+  // compiling a function declaration, we create a new Compiler on the C stack
+  // an initialize it. initCompiler sets that Compiler to be the current one.
+  // Then, as we compile the body, all of the functions that emit bytecode write
+  // to the chunk owned by the new Compiler's function.
+  //
+  // After we reach the end of the function's block body, we all endCompiler.
+  // That yields the newly comipled function object, which we store as a
+  // constant in the *surrounding* function's constant table.
+  //
+  // Then we need to get back to the surrounding function. To allow this, we
+  // treat the series of nested Compiler structs as a stack. Unlike the Value
+  // and CallFrame stacks in the VM, we don't use an array. Instead, we use a
+  // linked list. Each Compiler points back to the Compiler for the function
+  // that encloses it, all the way back to the root Compiler for the top-level
+  // code.
   Compiler compiler;
   initCompiler(&compiler, type);
   // This beginScope doesn't have a corresponding endScope. Because we end
