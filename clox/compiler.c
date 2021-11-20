@@ -303,6 +303,7 @@ static uint8_t parseVariable(const char* errorMessage) {
 }
 
 static void markInitialized() {
+  if (current->scopeDepth == 0) return;
   current->locals[current->localCount - 1].depth = current->scopeDepth;
 }
 
@@ -560,6 +561,44 @@ static void block() {
   consume(TOKEN_RIGHT_BRACE, "Expect '}' after block.");
 }
 
+static void function(FunctionType type) {
+  Compiler compiler;
+  initCompiler(&compiler, type);
+  // This beginScope doesn't have a corresponding endScope. Because we end
+  // Compiler completely when we reach the end of the function body, there's no
+  // need to close the lingering outermost scope.
+  beginScope();
+
+  consume(TOKEN_LEFT_PAREN, "Expect '(' after function name.");
+  consume(TOKEN_RIGHT_PAREN, "Expect ')' after parameters.");
+  consume(TOKEN_LEFT_BRACE, "Expect '{' before function body.");
+  block();
+
+  ObjFunction* function = endCompiler();
+  emitBytes(OP_CONSTANT, makeConstant(OBJ_VAL(function)));
+}
+
+static void funDeclaration() {
+  // Functions are first-class values, and a function declaration simply creates
+  // and stores one in a newly declared variable. So we parse the name just like
+  // any other variable declaration. A function declaration at the top level
+  // will bind the function to a global variable. Inside a block or other
+  // function, a function declaration creates a local variable.
+  uint8_t global = parseVariable("Expect function name.");
+  // Functions don't need to be defined in two separate stages like normal
+  // variables do. For normal variables this is necessary to prevent a
+  // variable's value from being accessed inside its own initializer, which
+  // would be bad because it doesn't have a value yet. But for functions it is
+  // safe to refer to the function inside its own body, and we'll want to allow
+  // this to support recursive local functions. So we mark the function
+  // declaration's variable "initialized" as soon as we compile the name, before
+  // we compile the body.
+  markInitialized();
+  // Now compile the function itself.
+  function(TYPE_FUNCTION);
+  defineVariable(global);
+}
+
 static void varDeclaration() {
   uint8_t global = parseVariable("Expect variable name.");
   if (match(TOKEN_EQUAL)) {
@@ -714,7 +753,9 @@ static void synchronize() {
 }
 
 static void declaration() {
-  if (match(TOKEN_VAR)) {
+  if (match(TOKEN_FUN)) {
+    funDeclaration();
+  } else if (match(TOKEN_VAR)) {
     varDeclaration();
   } else {
     statement();
