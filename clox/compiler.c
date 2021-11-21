@@ -255,11 +255,36 @@ static bool identifiersEqual(Token* a, Token* b) {
 }
 
 static int resolveUpvalue(Compiler* compiler, Token* name) {
-  if (compiler->enclosing == NULL) return -1;
+  if (compiler->enclosing == NULL) {
+    // The variable can't be resolved lexically and is treated as global.
+    return -1;
+  }
 
+  // First we look for a matching local variable in the enclosing function. If
+  // we find one, we capture that and return. This is the base case.
   int local = resolveLocal(compiler->enclosing, name);
   if (local != -1) {
     return addUpvalue(compiler, (uint8_t)local, true);
+  }
+
+  // Otherwise, we look for a local variable beyond the immediately enclosing
+  // function. We do this by recursively calling resolveUpvalue on the
+  // *enclosing* compiler, not the current one. This series of resolveUpvalue
+  // calls works its way along the chain of nested compilers until it hits one
+  // of the base cases - either it finds an actual local variable to capture or
+  // it runs out of compilers.
+  //
+  // When a local variable is found, the most deeply nested call to
+  // resolveUpvalue captures it and returns the upvalue index. That returns to
+  // the next call for the inner function declaration. That call captures the
+  // *upvalue* from the surrounding function, and so on. As each nested call to
+  // resolveUpvalue returns, we drill back down into the innermost function
+  // declaration where the identifier we are resolving appears. At each step
+  // alond the way, we add an upvalue to the intervening function and pass the
+  // resulting upvalue index down to the next call.
+  int upvalue = resolveUpvalue(compiler->enclosing, name);
+  if (upvalue != -1) {
+    return addUpvalue(compiler, (uint8_t)upvalue, false);
   }
 
   return -1;
@@ -708,7 +733,18 @@ static void function(FunctionType type) {
   block();
 
   ObjFunction* function = endCompiler();
+
+  // The OP_CLOSURE instruction is unique in that it has a variably sized
+  // encoding. For each upvalue the closure captures, there are two single-byte
+  // operands. Each pair of operands specifies what that upvalue captures. If
+  // the first byte is one, it captures a local variable in the enclosing
+  // function. If zero, it captures one of the function's upvalues. The next
+  // byte is the local slot of upvalue index to capture.
   emitBytes(OP_CLOSURE, makeConstant(OBJ_VAL(function)));
+  for (int i = 0; i < function->upvalueCount; i++) {
+    emitByte(compiler.upvalues[i].isLocal ? 1 : 0);
+    emitByte(compiler.upvalues[i].index);
+  }
 }
 
 static void funDeclaration() {
