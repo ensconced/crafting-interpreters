@@ -36,6 +36,7 @@ typedef struct {
   Obj obj;
   // The number of parameters the function expects.
   int arity;
+  int upvalueCount;
   Chunk chunk;
   ObjString* name;
 } ObjFunction;

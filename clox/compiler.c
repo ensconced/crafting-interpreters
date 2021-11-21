@@ -47,6 +47,12 @@ typedef struct {
   int depth;
 } Local;
 
+typedef struct {
+  // which local slot the upvalue is capturing
+  uint8_t index;
+  bool isLocal;
+} Upvalue;
+
 typedef enum {
   TYPE_FUNCTION,
   TYPE_SCRIPT,
@@ -75,6 +81,7 @@ typedef struct Compiler {
   // scope at once. That means we can also give the locals array a fixed size.
   Local locals[UINT8_COUNT];
   int localCount;
+  Upvalue upvalues[UINT8_COUNT];
   // The number of blocks surrounding the current bit of code we're compiling.
   int scopeDepth;
 } Compiler;
@@ -269,6 +276,31 @@ static int resolveLocal(Compiler* compiler, Token* name) {
     }
   }
   return -1;
+}
+
+static int addUpvalue(Compiler* compiler, uint8_t index, bool isLocal) {
+  // A closure may reference the same variable in a surrounding function
+  // multiple times. In that case, we don't want to waste time and memory
+  // creating a separate upvalue for each identifier expression. To fix that,
+  // before we add a new upvalue, we first check to see if the function already
+  // has an upvalue that closes over that variable.
+  for (int i = 0; i < upvalueCount; i++) {
+    Upvalue* upvalue = &compiler->upvalues[i];
+    if (upvalue->index == index && upvalue->isLocal == isLocal) {
+      return i;
+    }
+  }
+
+  if (upvalueCount == UINT8_COUNT) {
+    error("Too many closure variables in function.");
+    return 0;
+  }
+
+  // It doesn't already exist. So add it.
+  int upvalueCount = compiler->function->upvalueCount;
+  compiler->upvalues[upvalueCount].isLocal = isLocal;
+  compiler->upvalues[upvalueCount].index = index;
+  return compiler->function->upvalueCount++;
 }
 
 static void addLocal(Token name) {
