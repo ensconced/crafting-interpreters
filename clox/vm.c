@@ -109,6 +109,7 @@ static bool call(ObjFunction* function, int argCount) {
     return false;
   }
 
+  // load the function into a new CallFrame at the top of the frame stack
   CallFrame* frame = &vm.frames[vm.frameCount++];
   frame->function = function;
   frame->ip = function->chunk.code;
