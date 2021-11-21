@@ -19,8 +19,8 @@
 // on the heap, but that's slow. Function calls are a core operation, so they
 // need to be as fast as possible.
 typedef struct {
-  // the function that is executing
-  ObjFunction* function;
+  // the closure that is executing
+  ObjClosure* closure;
   // instead of storing the return address in the callee's frame, the caller
   // stores its own ip. When we return from a function, the VM will jump to the
   // ip of the caller's CallFrame and resume from there.

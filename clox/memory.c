@@ -17,6 +17,16 @@ void* reallocate(void* pointer, size_t oldSize, size_t newSize) {
 
 static void freeObject(Obj* object) {
   switch (object->type) {
+    case OBJ_CLOSURE: {
+      // We free only the closure, not the contained function. That's because
+      // the closure doesn't *own* the function. There may be multiple closures
+      // that all reference the same function, and none of them claims any
+      // special privilege over it. We can't free the function until all objects
+      // referencing it are gone - including even the surrounding function whose
+      // constant table contains it. That's a job for the GC.
+      FREE(ObjClosure, object);
+      break;
+    }
     case OBJ_FUNCTION: {
       ObjFunction* function = (ObjFunction*)object;
       freeChunk(&function->chunk);

@@ -19,6 +19,12 @@ static Obj* allocateObject(size_t size, ObjType type) {
   return object;
 }
 
+ObjClosure* newClosure(ObjFunction* function) {
+  ObjClosure* closure = ALLOCATE_OBJ(ObjClosure, OBJ_CLOSURE);
+  closure->function = function;
+  return closure;
+}
+
 ObjFunction* newFunction() {
   ObjFunction* function = ALLOCATE_OBJ(ObjFunction, OBJ_FUNCTION);
   function->arity = 0;
@@ -93,6 +99,13 @@ static void printFunction(ObjFunction* function) {
 
 void printObject(Value value) {
   switch (OBJ_TYPE(value)) {
+    case OBJ_CLOSURE:
+      // Closures are first-class objects, so you can print them. They display
+      // exactly as ObjFunction does. From the user's perspective, the
+      // difference between ObjFunction and ObjClosure is purely a hidden
+      // implementation detail.
+      printFunction(AS_CLOSURE(value)->function);
+      break;
     case OBJ_FUNCTION:
       printFunction(AS_FUNCTION(value));
       break;
