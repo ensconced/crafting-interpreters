@@ -294,6 +294,8 @@ static void declareVariable() {
   for (int i = current->localCount - 1; i >= 0; i--) {
     Local* local = &current->locals[i];
     if (local->depth != -1 && local->depth < current->scopeDepth) {
+      // We've entered the outer scope, so we know there can't be any
+      // variables with the same name within the same scope.
       break;
     }
 
@@ -625,8 +627,8 @@ static void function(FunctionType type) {
   // Then, as we compile the body, all of the functions that emit bytecode write
   // to the chunk owned by the new Compiler's function.
   //
-  // After we reach the end of the function's block body, we all endCompiler.
-  // That yields the newly comipled function object, which we store as a
+  // After we reach the end of the function's block body, we call endCompiler.
+  // That yields the newly compiled function object, which we store as a
   // constant in the *surrounding* function's constant table.
   //
   // Then we need to get back to the surrounding function. To allow this, we
