@@ -23,6 +23,7 @@ typedef enum {
   OBJ_FUNCTION,
   OBJ_NATIVE,
   OBJ_STRING,
+  OBJ_UPVALUE,
 } ObjType;
 
 struct Obj {
@@ -61,6 +62,16 @@ struct ObjString {
   uint32_t hash;
 };
 
+typedef struct ObjUpvalue {
+  Obj obj;
+  // The location field points to the closed-over variable. Note that this is a
+  // *pointer* to a Value, not a Value itself. It's a reference to a *variable*,
+  // not a *value*. This is important because it means that when we assign to
+  // the variable the upvalue captures, we're assigning to the actual variable,
+  // not a copy.
+  Value* location;
+} ObjUpvalue;
+
 typedef struct {
   Obj obj;
   ObjFunction* function;
@@ -80,6 +91,7 @@ ObjNative* newNative(NativeFn function);
 // claims ownership of the string you give it.
 ObjString* takeString(char* chars, int length);
 ObjString* copyString(const char* chars, int length);
+ObjUpvalue* newUpvalue(Value* slot);
 
 void printObject(Value value);
 

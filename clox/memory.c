@@ -49,6 +49,12 @@ static void freeObject(Obj* object) {
       FREE_ARRAY(char, string->chars, string->length + 1);
       FREE(ObjString, object);
     }
+    case OBJ_UPVALUE:
+      // Multiple closures can close over the same variable, so ObjUpvalue does
+      // not own the variable it references. Thus, the only thing to free is the
+      // ObjUpvalue itself.
+      FREE(ObjUpvalue, object);
+      break;
   }
 }
 

@@ -90,6 +90,12 @@ ObjString* copyString(const char* chars, int length) {
   return allocateString(heapChars, length, hash);
 }
 
+ObjUpvalue* newUpvalue(Value* slot) {
+  ObjUpvalue* upvalue = ALLOCATE_OBJ(ObjUpvalue, OBJ_UPVALUE);
+  upvalue->location = slot;
+  return upvalue;
+}
+
 static void printFunction(ObjFunction* function) {
   if (function->name == NULL) {
     printf("<script>");
@@ -115,6 +121,14 @@ void printObject(Value value) {
       break;
     case OBJ_STRING:
       printf("%s", AS_CSTRING(value));
+      break;
+    case OBJ_UPVALUE:
+      // Printing isn't useful to end users. Upvalues are objects only so that
+      // we can take advantage of the VM's memory management. They aren't
+      // first-class values that a Lox user can directly access in a program. So
+      // this code will never actually execute...but it keeps the compiler from
+      // yelling at us about an unhandled switch case, so here we are.
+      printf("upvalue");
       break;
   }
 }
