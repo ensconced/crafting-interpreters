@@ -45,6 +45,9 @@ typedef struct {
   // Zero is the global scope, 1 is the first top-level block, two is inside
   // that, etc.
   int depth;
+  // isCaptured is true if the local is captured by any later nested function
+  // declaration.
+  bool isCaptured;
 } Local;
 
 typedef struct {
@@ -230,7 +233,12 @@ static void endScope() {
   // the stack.
   while (current->localCount > 0 &&
          current->locals[current->localCount - 1].depth > current->scopeDepth) {
-    emitByte(OP_POP);
+    if (current->locals[current->localCount - 1].isCaptured) {
+      // This variable is closed over so we'll need to hoist it onto the heap.
+      emitByte(OP_CLOSE_UPVALUE);
+    } else {
+      emitByte(OP_POP);
+    }
     current->localCount--;
   }
 }
@@ -303,6 +311,7 @@ static int resolveUpvalue(Compiler* compiler, Token* name) {
   // we find one, we capture that and return. This is the base case.
   int local = resolveLocal(compiler->enclosing, name);
   if (local != -1) {
+    compiler->enclosing->locals[local].isCaptured = true;
     return addUpvalue(compiler, (uint8_t)local, true);
   }
 
@@ -339,6 +348,8 @@ static void addLocal(Token name) {
   local->name = name;
   // -1 is a special sentinel value meaning "uninitialized"
   local->depth = -1;
+  // initially, all locals are not captured
+  local->isCaptured = false;
 }
 
 static void declareVariable() {
@@ -522,6 +533,7 @@ static void initCompiler(Compiler* compiler, FunctionType type) {
   // use. We give it an empty name so that the user can't write an identifier
   // that refers to it.
   local->depth = 0;
+  local->isCaptured = false;
   local->name.start = "";
   local->name.length = 0;
 }
