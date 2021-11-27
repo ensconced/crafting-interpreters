@@ -191,3 +191,12 @@ ObjString* tableFindString(Table* table, const char* chars, int length,
     index = (index + 1) % table->capacity;
   }
 }
+
+void markTable(Table* table) {
+  for (int i = 0; i < table->capacity; i++) {
+    Entry* entry = &table->entries[i];
+    // GC needs to manage both the key strings and the values.
+    markObject((Obj*)entry->key);
+    markValue(entry->value);
+  }
+}
