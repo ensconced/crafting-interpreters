@@ -75,6 +75,17 @@ typedef struct ObjUpvalue {
 typedef struct {
   Obj obj;
   ObjFunction* function;
+  // Different closures may have different numbers of upvalues, so we need a
+  // dynamic array. The upvalues themselves are dynamically allocated too, so we
+  // end up with a double pointer - a pointer to a dynamically allocated array
+  // of pointers to upvalues.
+  ObjUpvalue** upvalues;
+  // Storing the upvalue count in the closure is redundant because the
+  // ObjFunction that the ObjClosure references also keeps that count. As uaual,
+  // this weird code is to appease the GC. The collector may need to know an
+  // ObjClosure's upvalue array size after the closure's corresponding
+  // ObjFunction has already been freed.
+  int upvalueCount;
 } ObjClosure;
 
 ObjClosure* newClosure(ObjFunction* function);

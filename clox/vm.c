@@ -137,6 +137,11 @@ static bool callValue(Value callee, int argCount) {
   return false;
 }
 
+static ObjUpvalue* captureUpvalue(Value* local) {
+  ObjUpvalue* createdUpvalue = newUpvalue(local);
+  return createdUpvalue;
+}
+
 static bool isFalsey(Value value) {
   return IS_NIL(value) || (IS_BOOL(value) && !(AS_BOOL(value)));
 }
@@ -278,6 +283,21 @@ static InterpretResult run() {
         // assignment is nested inside some larger expression.
         break;
       }
+      case OP_GET_UPVALUE: {
+        // The operand is the index into the current function's upvalue array.
+        uint8_t slot = READ_BYTE();
+        push(*frame->closure->upvalues[slot]->location);
+        break;
+      }
+      case OP_SET_UPVALUE: {
+        uint8_t slot = READ_BYTE();
+        // The set instruction doesn't pop the value from the stack, because
+        // assignment is an expression in Lox. So the result of the assignment -
+        // the assigned value - needs to remain on the stack for the surrounding
+        // expression.
+        *frame->closure->upvalues[slot]->location = peek(0);
+        break;
+      }
       case OP_EQUAL: {
         Value b = pop();
         Value a = pop();
@@ -355,6 +375,25 @@ static InterpretResult run() {
         ObjFunction* function = AS_FUNCTION(READ_CONSTANT());
         ObjClosure* closure = newClosure(function);
         push(OBJ_VAL(closure));
+        // Waslk through all of the operands after OP_CLOSURE to see what kind
+        // of upvalue each slot captures.
+        for (int i = 0; i < closure->upvalueCount; i++) {
+          uint8_t isLocal = READ_BYTE();
+          uint8_t index = READ_BYTE();
+          if (isLocal) {
+            closure->upvalues[i] = captureUpvalue(frame->slots + index);
+          } else {
+            // Capture an upvalue from the surrounding function. An OP_CLOSURE
+            // instruction is emitted at the end of a function declaration. At
+            // the moment that we are executing that declaration, the *current*
+            // function is the surrounding one. That means the current
+            // function's closure is stored in the CallFrame at the top of the
+            // callstack. So, to grab an upvalue from the enclosing function, we
+            // can read it right from the frame local variable, which caches a
+            // reference to that CallFrame.
+            closure->upvalues[i] = frame->closure->upvalues[index];
+          }
+        }
         break;
       }
       case OP_RETURN: {

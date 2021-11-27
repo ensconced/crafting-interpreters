@@ -254,6 +254,45 @@ static bool identifiersEqual(Token* a, Token* b) {
   return memcmp(a->start, b->start, a->length) == 0;
 }
 
+static int resolveLocal(Compiler* compiler, Token* name) {
+  for (int i = compiler->localCount - 1; i >= 0; i--) {
+    Local* local = &compiler->locals[i];
+    if (identifiersEqual(name, &local->name)) {
+      if (local->depth == -1) {
+        error("Can't read local variable in its own initializer.");
+      }
+      return i;
+    }
+  }
+  return -1;
+}
+
+static int addUpvalue(Compiler* compiler, uint8_t index, bool isLocal) {
+  // It doesn't already exist. So add it.
+  int upvalueCount = compiler->function->upvalueCount;
+
+  // A closure may reference the same variable in a surrounding function
+  // multiple times. In that case, we don't want to waste time and memory
+  // creating a separate upvalue for each identifier expression. To fix that,
+  // before we add a new upvalue, we first check to see if the function already
+  // has an upvalue that closes over that variable.
+  for (int i = 0; i < upvalueCount; i++) {
+    Upvalue* upvalue = &compiler->upvalues[i];
+    if (upvalue->index == index && upvalue->isLocal == isLocal) {
+      return i;
+    }
+  }
+
+  if (upvalueCount == UINT8_COUNT) {
+    error("Too many closure variables in function.");
+    return 0;
+  }
+
+  compiler->upvalues[upvalueCount].isLocal = isLocal;
+  compiler->upvalues[upvalueCount].index = index;
+  return compiler->function->upvalueCount++;
+}
+
 static int resolveUpvalue(Compiler* compiler, Token* name) {
   if (compiler->enclosing == NULL) {
     // The variable can't be resolved lexically and is treated as global.
@@ -288,44 +327,6 @@ static int resolveUpvalue(Compiler* compiler, Token* name) {
   }
 
   return -1;
-}
-
-static int resolveLocal(Compiler* compiler, Token* name) {
-  for (int i = compiler->localCount - 1; i >= 0; i--) {
-    Local* local = &compiler->locals[i];
-    if (identifiersEqual(name, &local->name)) {
-      if (local->depth == -1) {
-        error("Can't read local variable in its own initializer.");
-      }
-      return i;
-    }
-  }
-  return -1;
-}
-
-static int addUpvalue(Compiler* compiler, uint8_t index, bool isLocal) {
-  // A closure may reference the same variable in a surrounding function
-  // multiple times. In that case, we don't want to waste time and memory
-  // creating a separate upvalue for each identifier expression. To fix that,
-  // before we add a new upvalue, we first check to see if the function already
-  // has an upvalue that closes over that variable.
-  for (int i = 0; i < upvalueCount; i++) {
-    Upvalue* upvalue = &compiler->upvalues[i];
-    if (upvalue->index == index && upvalue->isLocal == isLocal) {
-      return i;
-    }
-  }
-
-  if (upvalueCount == UINT8_COUNT) {
-    error("Too many closure variables in function.");
-    return 0;
-  }
-
-  // It doesn't already exist. So add it.
-  int upvalueCount = compiler->function->upvalueCount;
-  compiler->upvalues[upvalueCount].isLocal = isLocal;
-  compiler->upvalues[upvalueCount].index = index;
-  return compiler->function->upvalueCount++;
 }
 
 static void addLocal(Token name) {
