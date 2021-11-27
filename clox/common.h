@@ -17,6 +17,7 @@
 // But's it's great for flushing out memory management bugs that occur only when
 // a GX is triggered at just the right moment.
 #define DEBUG_STRESS_GC
+#define DEBUG_LOG_GC
 
 #define UINT8_COUNT (UINT8_MAX + 1)
 
