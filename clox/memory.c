@@ -28,7 +28,7 @@ void* reallocate(void* pointer, size_t oldSize, size_t newSize) {
   return result;
 }
 
-void markObject(Obj* object) j {
+void markObject(Obj* object) {
   if (object == NULL) return;
 #ifdef DEBUG_LOG_GC
   printf("%p mark ", (void*)object);
@@ -36,6 +36,27 @@ void markObject(Obj* object) j {
   printf("\n");
 #endif
   object->isMarked = true;
+
+  if (vm.grayCapacity < vm.grayCount + 1) {
+    // This stack works mostly like other dynamic arrays we use in Lox, except
+    // that is uses the system realloc function and not our own *reallocate*
+    // wrapper. The memory for the gray stack itself is not managed by the
+    // garbage collector; we don't want growing the gray stack during a GC to
+    // cause the GC to recursively start a new GC.
+    vm.grayCapacity = GROW_CAPACITY(vm.grayCapacity);
+    vm.grayStack = (Obj**)realloc(vm.grayStack, sizeof(Obj*) * vm.grayCapacity);
+
+    // If we can't create or grow the gray stack, then we can't finish the
+    // garbage collection. This is bad news for the VM, but fortunately rare
+    // since the gray stack tends to be pretty small. It would be nice to do
+    // something more graceful. For example, we could allocate a "rainy day
+    // fund" block of memory when we start the VM. If the gray stack allocation
+    // fails, we free the rainy day block and try again. That may give us enough
+    // wiggle room on the heap to create the gray stack, finish the GC, and free
+    // up more memory.
+    if (vm.grayStack == NULL) exit(1);
+  }
+  vm.grayStack[vm.grayCount++] = object;
 }
 
 void markValue(Value value) {
@@ -138,4 +159,5 @@ void freeObjects() {
     freeObject(object);
     object = next;
   }
+  free(vm.grayStack);
 }
