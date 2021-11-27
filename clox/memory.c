@@ -18,7 +18,7 @@ void* reallocate(void* pointer, size_t oldSize, size_t newSize) {
 static void freeObject(Obj* object) {
   switch (object->type) {
     case OBJ_CLOSURE: {
-      ObjClosure* closure = (ObjClosure*)(object);
+      ObjClosure* closure = (ObjClosure*)object;
       // ObjClosure does not own the ObjUpvalue objects themselves, but it does
       // own *the array* containing pointers to those upvalues.
       FREE_ARRAY(ObjUpvalue*, closure->upvalues, closure->upvalueCount);
@@ -52,14 +52,12 @@ static void freeObject(Obj* object) {
       // that means we free the character array and then free the ObjString.
       FREE_ARRAY(char, string->chars, string->length + 1);
       FREE(ObjString, object);
+      break;
     }
     case OBJ_UPVALUE:
       // Multiple closures can close over the same variable, so ObjUpvalue
       // does not own the variable it references. Thus, the only thing to free
       // is the ObjUpvalue itself.
-
-      // TODO - this line seems somehow to be problematic - it causes a
-      // double-free...
       FREE(ObjUpvalue, object);
       break;
   }
