@@ -2,6 +2,7 @@
 
 #include <stdlib.h>
 
+#include "compiler.h"
 #include "vm.h"
 
 #ifdef DEBUG_LOG_GC
@@ -100,7 +101,22 @@ static void markRoots() {
   for (Value* slot = vm.stack; slot < vm.stackTop; slot++) {
     markValue(*slot);
   }
+  for (int i = 0; i < vm.frameCount; i++) {
+    markObject((Obj*)vm.frames[i].closure);
+  }
+
+  for (ObjUpvalue* upvalue = vm.openUpvalues; upvalue != NULL;
+       upvalue = upvalue->next) {
+    markObject((Obj*)upvalue);
+  };
+
   markTable(&vm.globals);
+  // A collection can begin during any allocation. Those don't just happen while
+  // the user's program is running - the compiler itself periodically grabs
+  // memory from the heap for literals and the constant table. If the GC runs
+  // while we're in the middle of compiling, then any values the compiler
+  // directly accesses need to be treated as roots too.
+  markCompilerRoots();
 }
 
 void collectGarbage() {
