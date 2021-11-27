@@ -54,9 +54,12 @@ static void freeObject(Obj* object) {
       FREE(ObjString, object);
     }
     case OBJ_UPVALUE:
-      // Multiple closures can close over the same variable, so ObjUpvalue does
-      // not own the variable it references. Thus, the only thing to free is the
-      // ObjUpvalue itself.
+      // Multiple closures can close over the same variable, so ObjUpvalue
+      // does not own the variable it references. Thus, the only thing to free
+      // is the ObjUpvalue itself.
+
+      // TODO - this line seems somehow to be problematic - it causes a
+      // double-free...
       FREE(ObjUpvalue, object);
       break;
   }
