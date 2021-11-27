@@ -168,6 +168,25 @@ static ObjUpvalue* captureUpvalue(Value* local) {
   return createdUpvalue;
 }
 
+static void closeUpvalues(Value* last) {
+  // Close every open upvalue we can find that points to *last* or any slot
+  // above it on the stack.
+  while (vm.openUpvalues != NULL && vm.openUpvalues->location >= last) {
+    ObjUpvalue* upvalue = vm.openUpvalues;
+    // The way an upvalue gets closed is pretty cool. First, we copy the
+    // variable's value into the *closed* field in the ObjUpvalue. That's where
+    // closed-over variables live in the heap...
+    upvalue->closed = *upvalue->location;
+    // The OP_GET_UPVALUE and OP_SET_UPVALUE instructions need to look for the
+    // variable therer after it's been moved. Those instructions dereference the
+    // *location* pointer to get to the variable's value. When the variable
+    // moves from the stack to the *closed* field, we simply update that
+    // *location* to the address of the ObjUpvalue's own *closed* field.
+    upvalue->location = &upvalue->closed;
+    vm.openUpvalues = upvalue->next;
+  }
+}
+
 static bool isFalsey(Value value) {
   return IS_NIL(value) || (IS_BOOL(value) && !(AS_BOOL(value)));
 }
@@ -422,11 +441,20 @@ static InterpretResult run() {
         }
         break;
       }
+      case OP_CLOSE_UPVALUE:
+        // The variable we're hoisting will be right on top of the stack.
+        closeUpvalues(vm.stackTop - 1);
+        // We have now moved the local from the stack to the heap, so we're free
+        // to discard the stack slot.
+        pop();
+        break;
       case OP_RETURN: {
         // When a function returns a value, that value will be on top of the
         // stack. We're about the discard the called function's entire stack
         // window, so we pop that return value off and hang on to it.
         Value result = pop();
+        // Close every remaining open upvalue owned by the returning function.
+        closeUpvalues(frame->slots);
         // Then we discard the CallFrame for the returning function.
         vm.frameCount--;
         if (vm.frameCount == 0) {

@@ -70,6 +70,7 @@ typedef struct ObjUpvalue {
   // the variable the upvalue captures, we're assigning to the actual variable,
   // not a copy.
   Value* location;
+  Value closed;
   struct ObjUpvalue* next;
 } ObjUpvalue;
 
