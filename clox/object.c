@@ -64,6 +64,8 @@ static ObjString* allocateString(char* chars, int length, uint32_t hash) {
   string->length = length;
   string->chars = chars;
   string->hash = hash;
+  // push/pop to avoid string getting GC'd while growing the table
+  push(OBJ_VAL(string));
   // String interning - here we're using the table more like a set than a
   // map/table. The keys are the strings and those are all we care about, so we
   // just use nil for the values.
@@ -71,6 +73,7 @@ static ObjString* allocateString(char* chars, int length, uint32_t hash) {
   // actually check for duplication before we get here. We do that in the two
   // higher-level functions that call allocateString.
   tableSet(&vm.strings, string, NIL_VAL);
+  pop();
   return string;
 }
 

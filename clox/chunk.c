@@ -3,6 +3,7 @@
 #include <stdlib.h>
 
 #include "memory.h"
+#include "vm.h"
 
 void initChunk(Chunk* chunk) {
   chunk->count = 0;
@@ -33,7 +34,10 @@ void writeChunk(Chunk* chunk, uint8_t byte, int line) {
 }
 
 int addConstant(Chunk* chunk, Value value) {
+  // push/pop it to avoid the GC freeing the value
+  push(value);
   writeValueArray(&chunk->constants, value);
+  pop();
   // return the index where the constant was appended so that we can locate the
   // same constant later
   return chunk->constants.count - 1;
