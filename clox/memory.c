@@ -225,6 +225,11 @@ void collectGarbage() {
 
   markRoots();
   traceReferences();
+
+  // The string table is special - it should be able to refer to a string, but
+  // that link should not be considered a root when determining reachability.
+  // i.e. it should only have weak references to the strings.
+  tableRemoveWhite(&vm.strings);
   sweep();
 
 #ifdef DEBUG_LOG_GC
