@@ -87,6 +87,10 @@ static void freeObject(Obj* object) {
 #endif
 
   switch (object->type) {
+    case OBJ_CLASS: {
+      FREE(ObjClass, object);
+      break;
+    }
     case OBJ_CLOSURE: {
       ObjClosure* closure = (ObjClosure*)object;
       // ObjClosure does not own the ObjUpvalue objects themselves, but it does
@@ -170,6 +174,11 @@ static void blackenObject(Obj* object) {
     case OBJ_NATIVE:
     case OBJ_STRING:
       break;
+    case OBJ_CLASS: {
+      ObjClass* klass = (ObjClass*)object;
+      markObject((Obj*)klass->name);
+      break;
+    }
     case OBJ_UPVALUE:
       // When an upvalue is closed, it contains a reference to the closed-over
       // value. Since the value is no longer on the stack, we need to make sure

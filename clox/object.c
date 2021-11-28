@@ -25,6 +25,12 @@ static Obj* allocateObject(size_t size, ObjType type) {
   return object;
 }
 
+ObjClass* newClass(ObjString* name) {
+  ObjClass* klass = ALLOCATE_OBJ(ObjClass, OBJ_CLASS);
+  klass->name = name;
+  return klass;
+}
+
 ObjClosure* newClosure(ObjFunction* function) {
   // When we create an ObjClosure, we allocate an upvalue array of the proper
   // size, which we determined at compile time and stored in the ObjFunction.
@@ -130,6 +136,9 @@ static void printFunction(ObjFunction* function) {
 
 void printObject(Value value) {
   switch (OBJ_TYPE(value)) {
+    case OBJ_CLASS:
+      printf("%s", AS_CLASS(value)->name->chars);
+      break;
     case OBJ_CLOSURE:
       // Closures are first-class objects, so you can print them. They display
       // exactly as ObjFunction does. From the user's perspective, the
