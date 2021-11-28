@@ -425,6 +425,9 @@ static InterpretResult run() {
         frame = &vm.frames[vm.frameCount - 1];
         break;
       }
+      case OP_CLASS:
+        push(OBJ_VAL(newClass(READ_STRING())));
+        break;
       case OP_CLOSURE: {
         // Load the compiled function from the constant table, wrap it in a new
         // ObjClosure and push the result onto the stack.

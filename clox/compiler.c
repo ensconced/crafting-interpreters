@@ -761,6 +761,22 @@ static void function(FunctionType type) {
   }
 }
 
+static void classDeclaration() {
+  consume(TOKEN_IDENTIFIER, "Expect class name.");
+  uint8_t nameConstant = identifierConstant(&parser.previous);
+  // Add the variable to the scope.
+  declareVariable();
+
+  emitBytes(OP_CLASS, nameConstant);
+
+  // Define the variable before the body so that the class can be referred to in
+  // the bodies of its own methods.
+  defineVariable(nameConstant);
+
+  consume(TOKEN_LEFT_BRACE, "Expect '{' before class body.");
+  consume(TOKEN_RIGHT_BRACE, "Expect '}' after class body.");
+}
+
 static void funDeclaration() {
   // Functions are first-class values, and a function declaration simply creates
   // and stores one in a newly declared variable. So we parse the name just like
@@ -949,7 +965,9 @@ static void synchronize() {
 }
 
 static void declaration() {
-  if (match(TOKEN_FUN)) {
+  if (match(TOKEN_CLASS)) {
+    classDeclaration();
+  } else if (match(TOKEN_FUN)) {
     funDeclaration();
   } else if (match(TOKEN_VAR)) {
     varDeclaration();
