@@ -489,7 +489,7 @@ static void call(bool canAssign) {
   emitBytes(OP_CALL, argCount);
 }
 
-static void dot(bool canAssign) j {
+static void dot(bool canAssign) {
   consume(TOKEN_IDENTIFIER, "Expect property name after '.'.");
   uint8_t name = identifierConstant(&parser.previous);
   if (canAssign && match(TOKEN_EQUAL)) {
