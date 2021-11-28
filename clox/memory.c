@@ -11,11 +11,18 @@
 #include "debug.h"
 #endif
 
+// Arbitrary value.
+#define GC_HEAP_GROW_FACTOR 2
+
 void* reallocate(void* pointer, size_t oldSize, size_t newSize) {
+  vm.bytesAllocated += newSize - oldSize;
   if (newSize > oldSize) {
 #ifdef DEBUG_STRESS_GC
     collectGarbage();
 #endif
+    if (vm.bytesAllocated > vm.nextGC) {
+      collectGarbage();
+    }
   }
 
   if (newSize == 0) {
@@ -222,7 +229,7 @@ void collectGarbage() {
 #ifdef DEBUG_LOG_GC
   printf("-- gc begin\n");
 #endif
-
+  size_t before = vm.bytesAllocated;
   markRoots();
   traceReferences();
 
@@ -232,8 +239,15 @@ void collectGarbage() {
   tableRemoveWhite(&vm.strings);
   sweep();
 
+  // The threshold is a multiple of the heap size. This way, as the amount of
+  // memory the program uses grows, the threshold moves farther out to limit the
+  // total time spent re-traversing the larger live set.
+  vm.nextGC = vm.bytesAllocated * GC_HEAP_GROW_FACTOR;
+
 #ifdef DEBUG_LOG_GC
   printf("-- gc end\n");
+  printf("   collected %zu bytes (from %zu to %zu) next at %zu\n",
+         before - vm.bytesAllocated, before, vm.bytesAllocated, vm.nextGC);
 #endif
 }
 
