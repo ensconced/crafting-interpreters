@@ -712,6 +712,18 @@ static void block() {
   consume(TOKEN_RIGHT_BRACE, "Expect '}' after block.");
 }
 
+static void method() {
+  // method name
+  consume(TOKEN_IDENTIFIER, "Expect method name.");
+
+  // method body
+  FunctionType type = TYPE_FUNCTION;
+  function(type);
+
+  uint8_t constant = identifierConstant(&parser.previous);
+  emitBytes(OP_METHOD, constant);
+}
+
 static void function(FunctionType type) {
   // The compiler struct stores data like which slots are owned by which local
   // variables, how many blocks of nesting we're currently in, etc. All of that
@@ -774,6 +786,7 @@ static void function(FunctionType type) {
 
 static void classDeclaration() {
   consume(TOKEN_IDENTIFIER, "Expect class name.");
+  Token className = parser.previous;
   uint8_t nameConstant = identifierConstant(&parser.previous);
   // Add the variable to the scope.
   declareVariable();
@@ -784,8 +797,20 @@ static void classDeclaration() {
   // the bodies of its own methods.
   defineVariable(nameConstant);
 
+  // Before we start binding methods, emit whatever code is necessary to load
+  // the class back on top of the stack. This means that when we execute each
+  // OP_METHOD instruction, the stack has the method's closure on top with the
+  // class right under it.
+  namedVariable(className, false);
+
   consume(TOKEN_LEFT_BRACE, "Expect '{' before class body.");
+  while (!check(TOKEN_RIGHT_BRACE) && !check(TOKEN_EOF)) {
+    method();
+  }
   consume(TOKEN_RIGHT_BRACE, "Expect '}' after class body.");
+  // We've reached the end of the method. We no longer need the class so we can
+  // tell the VM to pop it off the stack.
+  emitByte(OP_POP);
 }
 
 static void funDeclaration() {
