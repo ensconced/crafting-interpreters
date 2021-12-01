@@ -48,6 +48,7 @@ typedef struct {
   int upvalueCount;
   Chunk chunk;
   ObjString* name;
+  Table methods;
 } ObjFunction;
 
 typedef Value (*NativeFn)(int argCount, Value* args);
