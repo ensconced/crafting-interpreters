@@ -200,6 +200,19 @@ static void closeUpvalues(Value* last) {
   }
 }
 
+static void defineMethod(ObjString* name) {
+  // The method closure is no top of the stack, above the class it will be bound
+  // to. We read those two stack slots and store the closure in the class's
+  // method table. Then we pop the closure since we're done with it. Note that
+  // we don't do any runtime type checking on the closure or class object. The
+  // AS_CLASS call is safe because the compiler itself generated the code that
+  // causes the class to be in that stack slot. The VM trusts its own compiler.
+  Value method = peek(0);
+  ObjClass* klass = AS_CLASS(peek(1));
+  tableSet(&klass->methods, name, method);
+  pop();
+}
+
 static bool isFalsey(Value value) {
   return IS_NIL(value) || (IS_BOOL(value) && !(AS_BOOL(value)));
 }
@@ -461,6 +474,9 @@ static InterpretResult run() {
       }
       case OP_CLASS:
         push(OBJ_VAL(newClass(READ_STRING())));
+        break;
+      case OP_METHOD:
+        defineMethod(READ_STRING());
         break;
       case OP_CLOSURE: {
         // Load the compiled function from the constant table, wrap it in a new

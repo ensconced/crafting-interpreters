@@ -6,6 +6,7 @@
 
 typedef enum {
   OP_CLASS,
+  OP_METHOD,
   OP_CONSTANT,
   OP_NIL,
   OP_TRUE,
