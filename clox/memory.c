@@ -87,6 +87,11 @@ static void freeObject(Obj* object) {
 #endif
 
   switch (object->type) {
+    case OBJ_BOUND_METHOD:
+      // The bound method has a couple of references, but it doesn't *own* them,
+      // so it frees nothing but itself.
+      FREE(ObjBoundMethod, object);
+      break;
     case OBJ_CLASS: {
       ObjClass* klass = (ObjClass*)object;
       freeTable(&klass->methods);
@@ -182,6 +187,19 @@ static void blackenObject(Obj* object) {
     case OBJ_NATIVE:
     case OBJ_STRING:
       break;
+    case OBJ_BOUND_METHOD: {
+      ObjBoundMethod* bound = (ObjBoundMethod*)object;
+      // This ensures that a handle to a method keeps the receiver around in
+      // memory so that *this* can still find the object when you invoke the
+      // handle later.
+      markValue(bound->receiver);
+      // We also trace the method closure. This isn't strictly necessary - the
+      // receiver is an ObjInstance, which has a pointer to its ObjClass, which
+      // has a table for all of the methods. But it feels vaguely dubious to
+      // have ObjBoundMethod rely on that.
+      markObject((Obj*)bound->method);
+      break;
+    }
     case OBJ_CLASS: {
       ObjClass* klass = (ObjClass*)object;
       markObject((Obj*)klass->name);
