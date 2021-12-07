@@ -712,18 +712,6 @@ static void block() {
   consume(TOKEN_RIGHT_BRACE, "Expect '}' after block.");
 }
 
-static void method() {
-  // method name
-  consume(TOKEN_IDENTIFIER, "Expect method name.");
-
-  // method body
-  FunctionType type = TYPE_FUNCTION;
-  function(type);
-
-  uint8_t constant = identifierConstant(&parser.previous);
-  emitBytes(OP_METHOD, constant);
-}
-
 static void function(FunctionType type) {
   // The compiler struct stores data like which slots are owned by which local
   // variables, how many blocks of nesting we're currently in, etc. All of that
@@ -782,6 +770,18 @@ static void function(FunctionType type) {
     emitByte(compiler.upvalues[i].isLocal ? 1 : 0);
     emitByte(compiler.upvalues[i].index);
   }
+}
+
+static void method() {
+  // method name
+  consume(TOKEN_IDENTIFIER, "Expect method name.");
+
+  // method body
+  FunctionType type = TYPE_FUNCTION;
+  function(type);
+
+  uint8_t constant = identifierConstant(&parser.previous);
+  emitBytes(OP_METHOD, constant);
 }
 
 static void classDeclaration() {

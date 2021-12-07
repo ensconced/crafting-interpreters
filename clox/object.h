@@ -51,7 +51,6 @@ typedef struct {
   int upvalueCount;
   Chunk chunk;
   ObjString* name;
-  Table methods;
 } ObjFunction;
 
 typedef Value (*NativeFn)(int argCount, Value* args);
@@ -107,6 +106,7 @@ typedef struct {
   // The name isn't strictly needed for the user's program but it lets us show
   // the name at runtime for things like stack traces.
   ObjString* name;
+  Table methods;
 } ObjClass;
 
 typedef struct {
