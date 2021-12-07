@@ -778,9 +778,9 @@ static void method() {
 
   // method body
   FunctionType type = TYPE_FUNCTION;
+  uint8_t constant = identifierConstant(&parser.previous);
   function(type);
 
-  uint8_t constant = identifierConstant(&parser.previous);
   emitBytes(OP_METHOD, constant);
 }
 
