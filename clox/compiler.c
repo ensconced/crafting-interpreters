@@ -59,6 +59,7 @@ typedef struct {
 
 typedef enum {
   TYPE_FUNCTION,
+  TYPE_METHOD,
   TYPE_SCRIPT,
 } FunctionType;
 
@@ -546,8 +547,13 @@ static void initCompiler(Compiler* compiler, FunctionType type) {
   // that refers to it.
   local->depth = 0;
   local->isCaptured = false;
-  local->name.start = "";
-  local->name.length = 0;
+  if (type != TYPE_FUNCTION) {
+    local->name.start = "this";
+    local->name.length = 4;
+  } else {
+    local->name.start = "";
+    local->name.length = 0;
+  }
 }
 
 static void number(bool canAssign) {
@@ -602,6 +608,15 @@ static void namedVariable(Token name, bool canAssign) {
 
 static void variable(bool canAssign) {
   namedVariable(parser.previous, canAssign);
+}
+
+static void this_(bool canAssign) {
+  // Treat *this* as a lexically scoped local variable whose value gets
+  // magically initialized. Compiling it like a local variable means we get a
+  // lot of behaviour for free. In particular, closures inside a method that
+  // reference *this* will do the right thing and capture the receiver in an
+  // upvalue.
+  variable(false);
 }
 
 static void unary(bool canAssign) {
@@ -663,7 +678,9 @@ ParseRule rules[] = {
     [TOKEN_PRINT] = {NULL, NULL, PREC_NONE},
     [TOKEN_RETURN] = {NULL, NULL, PREC_NONE},
     [TOKEN_SUPER] = {NULL, NULL, PREC_NONE},
-    [TOKEN_THIS] = {NULL, NULL, PREC_NONE},
+    // The underscore is because *this* is a reserved word in C++ and we support
+    // compiling clox as C++.
+    [TOKEN_THIS] = {this_, NULL, PREC_NONE},
     [TOKEN_TRUE] = {literal, NULL, PREC_NONE},
     [TOKEN_VAR] = {NULL, NULL, PREC_NONE},
     [TOKEN_WHILE] = {NULL, NULL, PREC_NONE},
@@ -777,8 +794,8 @@ static void method() {
   consume(TOKEN_IDENTIFIER, "Expect method name.");
 
   // method body
-  FunctionType type = TYPE_FUNCTION;
   uint8_t constant = identifierConstant(&parser.previous);
+  FunctionType type = TYPE_METHOD;
   function(type);
 
   emitBytes(OP_METHOD, constant);
