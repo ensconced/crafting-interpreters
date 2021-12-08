@@ -91,8 +91,15 @@ typedef struct Compiler {
   int scopeDepth;
 } Compiler;
 
+typedef struct ClassCompiler {
+  // The enclosing class - nesting a class declaration inside a method in some
+  // other class is an uncommon thing to do, but Lox supports it.
+  struct ClassCompiler* enclosing;
+} ClassCompiler;
+
 Parser parser;
 Compiler* current = NULL;
+ClassCompiler* currentClass = NULL;
 
 static Chunk* currentChunk() { return &current->function->chunk; }
 
@@ -611,6 +618,11 @@ static void variable(bool canAssign) {
 }
 
 static void this_(bool canAssign) {
+  if (currentClass == NULL) {
+    error("Can't use 'this' outside of a class.");
+    return;
+  }
+
   // Treat *this* as a lexically scoped local variable whose value gets
   // magically initialized. Compiling it like a local variable means we get a
   // lot of behaviour for free. In particular, closures inside a method that
@@ -814,6 +826,10 @@ static void classDeclaration() {
   // the bodies of its own methods.
   defineVariable(nameConstant);
 
+  ClassCompiler classCompiler;
+  classCompiler.enclosing = currentClass;
+  currentClass = &classCompiler;
+
   // Before we start binding methods, emit whatever code is necessary to load
   // the class back on top of the stack. This means that when we execute each
   // OP_METHOD instruction, the stack has the method's closure on top with the
@@ -828,6 +844,7 @@ static void classDeclaration() {
   // We've reached the end of the method. We no longer need the class so we can
   // tell the VM to pop it off the stack.
   emitByte(OP_POP);
+  currentClass = currentClass.enclosing;
 }
 
 static void funDeclaration() {
