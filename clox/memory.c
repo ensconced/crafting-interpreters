@@ -170,6 +170,10 @@ static void markRoots() {
   // while we're in the middle of compiling, then any values the compiler
   // directly accesses need to be treated as roots too.
   markCompilerRoots();
+  // Make sure that if the GC reads vm.initString before it's initialized, it
+  // sees NULL instead of garbage.
+  vm.initString = NULL;
+  markObject((Obj*)vm.initString);
 }
 
 static void blackenObject(Obj* object) {

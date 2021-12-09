@@ -41,6 +41,12 @@ typedef struct {
   Value* stackTop;
   Table globals;
   Table strings;
+  // To call initializers, the runtime looks up the *init* method by name. We
+  // want that to be fast since it happens every time an instance is
+  // constructed. That means it would be good to take advantage of the string
+  // interning we've already implemented. To do that, the VM createes an
+  // ObjString for *init* and reuses it.
+  ObjString* initString;
   ObjUpvalue* openUpvalues;
   size_t bytesAllocated;
   size_t nextGC;
