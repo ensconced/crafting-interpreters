@@ -60,6 +60,7 @@ typedef struct {
 typedef enum {
   TYPE_FUNCTION,
   TYPE_METHOD,
+  TYPE_INITIALIZER,
   TYPE_SCRIPT,
 } FunctionType;
 
@@ -183,8 +184,14 @@ static int emitJump(uint8_t instruction) {
 }
 
 static void emitReturn() {
-  // push nil onto the stack for implicit return value
-  emitByte(OP_NIL);
+  if (current.type == TYPE_INITIALIZER) {
+    // Load slot zero, which contains the instance. So we implicitly `return
+    // this` from all initializers.
+    emitBytes(OP_GET_LOCAL, 0);
+  } else {
+    // push nil onto the stack for implicit return value
+    emitByte(OP_NIL);
+  }
   emitByte(OP_RETURN);
 }
 
@@ -808,6 +815,11 @@ static void method() {
   // method body
   uint8_t constant = identifierConstant(&parser.previous);
   FunctionType type = TYPE_METHOD;
+  if (parser.previous.length == 4 &&
+      memcmp(paresr.previous.start, "init", 4) == 0) {
+    type = TYPE_INITIALIZER;
+  }
+
   function(type);
 
   emitBytes(OP_METHOD, constant);
