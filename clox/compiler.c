@@ -184,7 +184,7 @@ static int emitJump(uint8_t instruction) {
 }
 
 static void emitReturn() {
-  if (current.type == TYPE_INITIALIZER) {
+  if (current->type == TYPE_INITIALIZER) {
     // Load slot zero, which contains the instance. So we implicitly `return
     // this` from all initializers.
     emitBytes(OP_GET_LOCAL, 0);
@@ -816,7 +816,7 @@ static void method() {
   uint8_t constant = identifierConstant(&parser.previous);
   FunctionType type = TYPE_METHOD;
   if (parser.previous.length == 4 &&
-      memcmp(paresr.previous.start, "init", 4) == 0) {
+      memcmp(parser.previous.start, "init", 4) == 0) {
     type = TYPE_INITIALIZER;
   }
 
@@ -856,7 +856,7 @@ static void classDeclaration() {
   // We've reached the end of the method. We no longer need the class so we can
   // tell the VM to pop it off the stack.
   emitByte(OP_POP);
-  currentClass = currentClass.enclosing;
+  currentClass = currentClass->enclosing;
 }
 
 static void funDeclaration() {
@@ -999,6 +999,9 @@ static void returnStatement() {
   if (match(TOKEN_SEMICOLON)) {
     emitReturn();
   } else {
+    if (current->type == TYPE_INITIALIZER) {
+      error("Can't return a value from an initializer");
+    }
     expression();
     consume(TOKEN_SEMICOLON, "Expect ';' after return value");
     emitByte(OP_RETURN);
