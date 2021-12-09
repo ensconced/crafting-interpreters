@@ -653,10 +653,16 @@ static void super_(bool canAssign) {
   // First, emit code to look up the current receiver stored in the hidden
   // variable *this* and push it to the stack.
   namedVariable(syntheticToken("this"), false);
-  // Emit code to look up the superclass from its *super* variable and push that
-  // on top.
-  namedVariable(syntheticToken("super"), false);
-  emitBytes(OP_GET_SUPER, name);
+
+  if (match(TOKEN_LEFT_PAREN)) {
+    uint8_t argCount = argumentList();
+    namedVariable(syntheticToken("super"), false);
+    emitBytes(OP_SUPER_INVOKE, name);
+    emitByte(argCount);
+  } else {
+    namedVariable(syntheticToken("super"), false);
+    emitBytes(OP_GET_SUPER, name);
+  }
 }
 
 static void this_(bool canAssign) {
