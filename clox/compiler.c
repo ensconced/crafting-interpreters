@@ -96,6 +96,7 @@ typedef struct ClassCompiler {
   // The enclosing class - nesting a class declaration inside a method in some
   // other class is an uncommon thing to do, but Lox supports it.
   struct ClassCompiler* enclosing;
+  bool hasSuperclass;
 } ClassCompiler;
 
 Parser parser;
@@ -630,6 +631,13 @@ static void variable(bool canAssign) {
   namedVariable(parser.previous, canAssign);
 }
 
+static Token syntheticToken(const char* text) {
+  Token token;
+  token.start = text;
+  token.length = (int)strlen(text);
+  return token;
+}
+
 static void this_(bool canAssign) {
   if (currentClass == NULL) {
     error("Can't use 'this' outside of a class.");
@@ -846,6 +854,7 @@ static void classDeclaration() {
 
   ClassCompiler classCompiler;
   classCompiler.enclosing = currentClass;
+  classCompiler.hasSuperclass = false;
   currentClass = &classCompiler;
 
   if (match(TOKEN_LESS)) {
@@ -856,8 +865,19 @@ static void classDeclaration() {
       error("A class can't inheriy from itself");
     }
 
+    // Creating a new lexical scope ensures that if we declare two classes in
+    // the same scope, each has a different local slot to store its superclass.
+    // Since we always name this variable "super", if we didn't make a scope for
+    // each subclass, the variables would collide.
+    beginScope();
+    // *super* is a reserved word, which guarantees the compiler's hidden
+    // variable won't collide with a user-defined one.
+    addLocal(syntheticToken("super"));
+    defineVariable(0);
+
     namedVariable(className, false);
     emitByte(OP_INHERIT);
+    classCompiler.hasSuperclass = true;
   }
 
   // Before we start binding methods, emit whatever code is necessary to load
@@ -874,6 +894,11 @@ static void classDeclaration() {
   // We've reached the end of the method. We no longer need the class so we can
   // tell the VM to pop it off the stack.
   emitByte(OP_POP);
+
+  if (classCompiler.hasSuperclass) {
+    endScope();
+  }
+
   currentClass = currentClass->enclosing;
 }
 
