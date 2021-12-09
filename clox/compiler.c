@@ -510,6 +510,12 @@ static void dot(bool canAssign) {
   if (canAssign && match(TOKEN_EQUAL)) {
     expression();
     emitBytes(OP_SET_PROPERTY, name);
+  } else if (match(TOKEN_LEFT_PAREN)) {
+    uint8_t argCount = argumentList();
+    // This single instruction combines the operands of the OP_GET_PROPERTY and
+    // OP_CALL instructions.
+    emitBytes(OP_INVOKE, name);
+    emitByte(argCount);
   } else {
     emitBytes(OP_GET_PROPERTY, name);
   }
