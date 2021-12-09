@@ -638,6 +638,27 @@ static Token syntheticToken(const char* text) {
   return token;
 }
 
+static void super_(bool canAssign) {
+  if (currentClass == NULL) {
+    error("Can't use 'super' outside of a class.");
+  } else if (!currentClass->hasSuperclass) {
+    error("Can't use 'super' in a class with no superclass.");
+  }
+  consume(TOKEN_DOT, "Expect '.' after 'super'.");
+  consume(TOKEN_IDENTIFIER, "Expect superclass method name.");
+  uint8_t name = identifierConstant(&parser.previous);
+  // In order to access a superclass method on the current instance, the runtime
+  // needs both the receiver and the superclass of the surrounding method's
+  // class.
+  // First, emit code to look up the current receiver stored in the hidden
+  // variable *this* and push it to the stack.
+  namedVariable(syntheticToken("this"), false);
+  // Emit code to look up the superclass from its *super* variable and push that
+  // on top.
+  namedVariable(syntheticToken("super"), false);
+  emitBytes(OP_GET_SUPER, name);
+}
+
 static void this_(bool canAssign) {
   if (currentClass == NULL) {
     error("Can't use 'this' outside of a class.");
@@ -710,7 +731,7 @@ ParseRule rules[] = {
     [TOKEN_OR] = {NULL, or_, PREC_OR},
     [TOKEN_PRINT] = {NULL, NULL, PREC_NONE},
     [TOKEN_RETURN] = {NULL, NULL, PREC_NONE},
-    [TOKEN_SUPER] = {NULL, NULL, PREC_NONE},
+    [TOKEN_SUPER] = {super_, NULL, PREC_NONE},
     // The underscore is because *this* is a reserved word in C++ and we support
     // compiling clox as C++.
     [TOKEN_THIS] = {this_, NULL, PREC_NONE},
