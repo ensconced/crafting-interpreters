@@ -848,6 +848,18 @@ static void classDeclaration() {
   classCompiler.enclosing = currentClass;
   currentClass = &classCompiler;
 
+  if (match(TOKEN_LESS)) {
+    consume(TOKEN_IDENTIFIER, "Expect superclass name.");
+    variable(false);
+
+    if (identifiersEqual(&className, &parser.previous)) {
+      error("A class can't inheriy from itself");
+    }
+
+    namedVariable(className, false);
+    emitByte(OP_INHERIT);
+  }
+
   // Before we start binding methods, emit whatever code is necessary to load
   // the class back on top of the stack. This means that when we execute each
   // OP_METHOD instruction, the stack has the method's closure on top with the
