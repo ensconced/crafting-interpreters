@@ -13,15 +13,27 @@ typedef struct ObjString ObjString;
 // that Intel value.
 #define QNAN ((uint64_t)0x7ffc000000000000)
 
+#define TAG_NIL 1    // 01
+#define TAG_FALSE 2  // 10
+#define TAG_TRUE 3   // 11
+
 typedef uint64_t Value;
 
+#define IS_BOOL(value) (((value) | 1) == TRUE_VAL)
+#define IS_NIL(value) ((value) == NIL_VAL)
 // We know that every Value that is *not* a number will use a special quiet NaN
 // representation. And we presume we have correctly avoided any of the
 // meaningful NaN representations that may actually be produced by doing
 // arithmetic on numbers.
 #define IS_NUMBER(value) (((value)&QNAN) != QNAN)
 
+#define AS_BOOL(value) ((value) == TRUE_VAL)
 #define AS_NUMBER(value) valueToNum(value)
+
+#define BOOL_VAL(b) ((b) ? TRUE_VAL : FALSE_VAL)
+#define FALSE_VAL ((Value)(uint64_t)(QNAN | TAG_FALSE))
+#define TRUE_VAL ((Value)(uint64_t)(QNAN | TAG_TRUE))
+#define NIL_VAL ((Value)(uint64_t)(QNAN | TAG_NIL))
 
 #define NUMBER_VAL(num) numToValue(num)
 
