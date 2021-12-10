@@ -84,8 +84,6 @@ typedef struct {
 #define NUMBER_VAL(value) ((Value){VAL_NUMBER, {.number = value}})
 #define OBJ_VAL(object) ((Value){VAL_OBJ, {.obj = (Obj*)object}})
 
-#endif
-
 // Macros for unpacking a clox value to get the native C value back out.
 // Any time we call one of these AS_ macros, we need to guard it behind a call
 // to one of the IS_ macros (see below) first.
@@ -100,6 +98,8 @@ typedef struct {
 #define IS_NIL(value) ((value).type == VAL_NIL)
 #define IS_NUMBER(value) ((value).type == VAL_NUMBER)
 #define IS_OBJ(value) ((value).type == VAL_OBJ)
+
+#endif
 
 typedef struct {
   int capacity;
