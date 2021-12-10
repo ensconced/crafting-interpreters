@@ -5,6 +5,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#define NAN_BOXING
 // When this flag is defined, we print out the bytecode.
 #define DEBUG_PRINT_CODE
 

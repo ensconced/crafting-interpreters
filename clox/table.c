@@ -28,7 +28,9 @@ void freeTable(Table* table) {
   and to decide where to insert new ones.
 */
 static Entry* findEntry(Entry* entries, int capacity, ObjString* key) {
-  uint32_t index = key->hash % capacity;
+  // Here we're using a bitwise and in place of modulo for performance,
+  // which works because we know the capacity is always a power of two.
+  uint32_t index = key->hash & (capacity - 1);
   Entry* tombstone = NULL;
   for (;;) {
     Entry* entry = &entries[index];
@@ -67,7 +69,7 @@ static Entry* findEntry(Entry* entries, int capacity, ObjString* key) {
       collision. So we start doing linear probing - that's what the for loop
       does.
     */
-    index = (index + 1) % capacity;
+    index = (index + 1) & (capacity - 1);
   }
 }
 
@@ -172,7 +174,7 @@ ObjString* tableFindString(Table* table, const char* chars, int length,
   // quick to check and if they aren't equal, the strings definitely aren't the
   // same.
   if (table->count == 0) return NULL;
-  uint32_t index = hash % table->capacity;
+  uint32_t index = hash & (table->capacity - 1);
   for (;;) {
     Entry* entry = &table->entries[index];
     if (entry->key == NULL) {
@@ -188,7 +190,7 @@ ObjString* tableFindString(Table* table, const char* chars, int length,
       // We found it
       return entry->key;
     }
-    index = (index + 1) % table->capacity;
+    index = (index + 1) & (table->capacity - 1);
   }
 }
 

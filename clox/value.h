@@ -5,6 +5,10 @@
 typedef struct Obj Obj;
 typedef struct ObjString ObjString;
 
+#ifdef NAN_BOXING
+typedef uint64_t Value;
+#else
+
 // The cases here cover each kind of value that has built-in support in the VM.
 typedef enum {
   VAL_BOOL,
@@ -33,6 +37,8 @@ typedef struct {
 #define NIL_VAL ((Value){VAL_NIL, {.number = 0}})
 #define NUMBER_VAL(value) ((Value){VAL_NUMBER, {.number = value}})
 #define OBJ_VAL(object) ((Value){VAL_OBJ, {.obj = (Obj*)object}})
+
+#endif
 
 // Macros for unpacking a clox value to get the native C value back out.
 // Any time we call one of these AS_ macros, we need to guard it behind a call
