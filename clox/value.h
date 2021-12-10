@@ -9,6 +9,7 @@ typedef struct ObjString ObjString;
 
 #ifdef NAN_BOXING
 
+#define SIGN_BIT ((uint64_t)0x8000000000000000)
 // All of the exponent bits, plus the quiet NaN bit, plus one extra to dodge
 // that Intel value.
 #define QNAN ((uint64_t)0x7ffc000000000000)
@@ -26,8 +27,10 @@ typedef uint64_t Value;
 // meaningful NaN representations that may actually be produced by doing
 // arithmetic on numbers.
 #define IS_NUMBER(value) (((value)&QNAN) != QNAN)
+#define IS_OBJ(value) (((value) & (QNAN | SIGN_BIT)) == (QNAN | SIGN_BIT))
 
 #define AS_BOOL(value) ((value) == TRUE_VAL)
+#define AS_OBJ(value) ((Obj*)(uintptr_t)((value) & ~(SIGN_BIT | QNAN)))
 #define AS_NUMBER(value) valueToNum(value)
 
 #define BOOL_VAL(b) ((b) ? TRUE_VAL : FALSE_VAL)
@@ -36,6 +39,7 @@ typedef uint64_t Value;
 #define NIL_VAL ((Value)(uint64_t)(QNAN | TAG_NIL))
 
 #define NUMBER_VAL(num) numToValue(num)
+#define OBJ_VAL(obj) (Value)(SIGN_BIT | QNAN | (uint64_t)(uintptr_t)(obj))
 
 static inline double valueToNum(Value value) {
   double num;
